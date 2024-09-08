@@ -597,7 +597,7 @@ def create_acc_project(aff_list, c_metadata, configs, music_info, style='ArcCrea
 
     # Check if base.png exists, if not, create it.
     if not os.path.exists(os.path.join(arcproj_path, "base.jpg")):
-        with open(os.path.join(arcproj_path, "base.png"), "w") as file:
+        with open(os.path.join(arcproj_path, "base.jpg"), "w") as file:
             pass
 
     # Create a Aff file:
@@ -670,14 +670,14 @@ def exec_convert(configs):
 
 # 使用示例
 configs = {
-    "FilePath": r"C:\ProjectsAndTricks\SDHD_2.20.00_20231020095843_0\data\A000\music\music1035\1035_03.c2s",
-    "MusicInfoFilePath": r"C:\ProjectsAndTricks\SDHD_2.20.00_20231020095843_0\data\A000\music\music1035\Music.xml",
-    "AudioOffset": 2000,
+    "FilePath": r"",
+    "MusicInfoFilePath": r"",
+    "AudioOffset": 0,
     "MusicName": "",
     "ArtistName": "",
     "DifficultyType": 2,
     "DifficultyName": "Master",
-    "AffProjectDirPath": r"C:\FileAchieve\SummerHN\ARC_Fanmade\Charts\ArcCreateProjects\chibidayanshang",
+    "AffProjectDirPath": r"",
     "AffProjectStyle": "ArcCreate",
     "AffProjectName": "",
     "ConvertConfigs": {
