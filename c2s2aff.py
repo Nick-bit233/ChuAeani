@@ -1,77 +1,44 @@
-from typing import List
-
+import os
+import re
+import xml.etree.ElementTree as ET
 from arcfutil import aff
-from arcfutil.aff import Arc, Tap, Hold
 
-### arcfutil usage
-# a_normal_list = [
-#     aff.Timing(0, 222.22),
-#     aff.Tap(0, 1),
-#     aff.Hold(0, 100, 2),
-#     aff.Arc(0, 200, 0, 1, 's', 1, 0, 0, True, [0, 100, 200]),
-#     aff.TimingGroup(
-#         aff.Timing(0, 222.22),
-#     )
-# ]
-#
-# afflist = aff.AffList(a_normal_list)
-# aff.dumps(afflist, '0.aff')
-
+# Global settings
 Chuni_OffsetResolution = 384
-Aff_AudioOffset = -667
-C_NOTE_TYPES = ['TAP', 'CHR', 'FLK',
-                'HLD',
-                'SXC', 'SXD', 'SLC', 'SLD',
-                'AIR', 'AUL', 'AUR',
-                'ASC', 'ASD', 'AHD',
-                'ADL', 'ADR', 'ADW']
-# configs
-check_note_overlapping = False  # check if after converting tap notes overlapping in the same lane.
-
-
-# class AffNote:
-#     def __init__(self, start_time, end_time, type, props):
-#         self.time = (start_time, end_time)
-#         self.type = type  # tap/hold/arc/arctap/timing
-#         self.props = props
-#
-#     def to_string(self):
-#         # TODO: format the output string as .aff file.
-#         return f"{self.time}\t{self.type}\t{self.props}"
 
 
 def read_c2s_file(file_path):
     def convert_to_number(value):
-        """尝试将字符串转换为整数或浮点数"""
+        """Do the conversion to number if possible."""
         try:
-            # 尝试转换为整数
+            # Check if the value can be converted to an integer
             return int(value)
         except ValueError:
             try:
-                # 如果失败，则尝试转换为浮点数
+                # If not, check if the value can be converted to a float
                 return float(value)
             except ValueError:
-                # 如果都失败，则返回原始值（可能是字符串）
+                # Otherwise, return the original value
                 return value
 
     with open(file_path, 'r', encoding='utf-8') as file:
-        data = file.read().strip().split('\n\n')  # 按空行分割内容
+        data = file.read().strip().split('\n\n')
 
-    # 第一部分：版本等信息
+    # The first part of the file contains metadata
     first_part = data[0].strip().split('\n')
     metadata = {}
     for line in first_part:
         key, *values = line.split('\t')
         metadata[key] = [convert_to_number(v) for v in values]  # 转换值
 
-    # 第二部分：BPM、拍号、速度变化等信息
+    # The second part of the file contains timing information
     second_part = data[1].strip().split('\n')
     timing_list = []
     for line in second_part:
         elements = line.split('\t')
         timing_list.append([convert_to_number(e) for e in elements])  # 转换值
 
-    # 第三部分：每个音符的详细信息
+    # The last part of the file contains all notes info.
     third_part = data[2].strip().split('\n')
     notes_list = []
     for line in third_part:
@@ -88,7 +55,7 @@ def find_note_lane_overlap_partition(a, b):
     best_partition_index = -1
     max_overlap_length = 0
 
-    # try count evey partition to find the longest overlapping.
+    # Try count evey partition to find the longest overlapping.
     for index, (start, end) in enumerate(partitions):
         overlap_start = max(a, start)
         overlap_end = min(b, end)
@@ -103,7 +70,29 @@ def find_note_lane_overlap_partition(a, b):
     return best_partition_index + 1
 
 
-def convert_time_beats_to_ms(c_note, bpm, audio_beats=4, audio_note_time=4, aff_audio_offset=0):
+def find_note_lane_midpoint_partition(a, b):
+    # 16 areas to 4k
+    partitions = [(0, 4), (4, 8), (8, 12), (12, 16)]
+
+    # Calculate the midpoint of the note
+    midpoint = (a + b) / 2
+
+    # Check if the midpoint is in any partition
+    for index, (start, end) in enumerate(partitions):
+        if start <= a <= end and start <= b <= end:
+            return index + 1, True
+
+    # If not, return the midpoint in float value.
+    proportion = mapping_midpoint(midpoint, ground=True)
+
+    return proportion, False
+
+    # DYNAMIC ARC NOTE FUNC (TODO: experiment)
+    # use arcaea experimental ArcTap that can shift note width to corresponding to chuni note width.
+
+
+def convert_time_beats_to_ms(c_note, bpm, c_audio_betas, aff_audio_offset=0):
+    audio_beats, audio_note_time = c_audio_betas[0], c_audio_betas[1]
     measure = c_note[1]  # The measure number usually in the second position
     offset = c_note[2]  # The offset usually in the third position
 
@@ -142,34 +131,16 @@ def convert_time_beats_to_ms(c_note, bpm, audio_beats=4, audio_note_time=4, aff_
     return int(start_time_ms), int(end_time_ms)  # Return as a tuple of (start_time, end_time)er
 
 
-def find_note_lane_midpoint_partition(a, b):
-    # 定义分区的范围
-    partitions = [(0, 4), (4, 8), (8, 12), (12, 16)]
-
-    # 计算中点
-    midpoint = (a + b) / 2
-
-    # 检查中点是否在分区内
-    for index, (start, end) in enumerate(partitions):
-        if start <= a <= end and start <= b <= end:
-            return index + 1, True
-
-    proportion = mapping_midpoint(midpoint, ground=True)
-
-    return proportion, False
-
-
 def mapping_midpoint(midpoint, ground=True):
+    # Arcaea ground lane is from -0.5 to 1.5, and sky lane is from 0.0 to 1.0. [FTR default]
+    # TODO: add BYD setting.
     if ground:
-        # 如果不在任何分区，计算比例
         if midpoint < 0:
             return -0.5
         elif midpoint > 16:
             return 1.5
         else:
-            # 将中点从[0, 16]映射到[0, 1]
             proportion = midpoint / 16
-            # 然后将其缩放到[-0.5, 1.5]
             proportion = proportion * (1.5 + 0.5) - 0.5
             return proportion
     else:
@@ -177,117 +148,14 @@ def mapping_midpoint(midpoint, ground=True):
 
 
 def mapping_y_axis(c_value, c_ground=1.0, a_ground=0.0, c_sky=5.0, a_sky=1.0):
+    # mapping y_axis from chuni to arcaea
+    # MAX arc y set as 1.5, MIN arc y set as 0.0.
     m = (a_sky - a_ground) / (c_sky - c_ground)
     b = a_ground - m * c_ground
     if c_value > c_sky:
         return 0.67 * (m * c_value + b)
     else:
         return m * c_value + b
-
-
-# def convert_note_type(note_type, start_time, end_time, note) -> list[Arc | Tap | Hold]:
-#     target_notes = []
-#     if note_type in ['TAP', 'CHR', 'FLK']:
-#         # TAP, CHR, FLK to Arcaea Tap
-#         note_lane_left = note[3]  # The left start of chuni note
-#         note_lane_width = note[4]  # The width of chuni note
-#
-#         if len(note) > 5 and note[5] == "UP":
-#             a_note_x = mapping_midpoint(note_lane_left + note_lane_width / 2, ground=False)
-#             target_notes.append(
-#                 aff.Arc(start_time, start_time + 3, a_note_x, a_note_x, 's', 1, 1, 0, True, [start_time]))
-#         else:
-#             # Mapping the note lane to Arcaea lane
-#
-#             # BASIC RULE: The Chuni note lane is from 0 to 16, and the width of the note is 1.
-#             # if a note is equal or inside zone (0, 4), (4, 8), (8, 12) or (12, 16),
-#             # it is mapping to the 0, 1, 2, 3 lane in Arcaea.
-#
-#             # OVERLAPPING FUNC:
-#             # if a note cross more than one zones, it is mapping to the lane that has the longest overlapping.
-#             # a_lane = find_note_lane_overlap_partition(note_lane_left, note_lane_left + note_lane_width)
-#             # target_notes.append(aff.Tap(start_time, a_lane))
-#
-#             # MIDPOINT FUNC (default):
-#             # if a note cross more than one zones, it is mapping to an ArcTap note which the co-trace arc starts in the
-#             # (midpoint/16, 0) and with duration 3ms.
-#             a_lane, is_ground = find_note_lane_midpoint_partition(note_lane_left, note_lane_left + note_lane_width)
-#             if is_ground:
-#                 target_notes.append(aff.Tap(start_time, a_lane))
-#             else:
-#                 target_notes.append(
-#                     aff.Arc(start_time, start_time + 3, a_lane, a_lane, 's',
-#                             0, 0, 0, True, [start_time]))
-#
-#             # DYNAMIC ARC NOTE FUNC (TODO: experiment)
-#             # use arcaea experimental ArcTap that can shift note width to corresponding to chuni note width.
-#
-#     if note_type in ['HLD', 'HXD']:
-#         if start_time == end_time:
-#             return target_notes
-#         # HLD to Arcaea Hold
-#         note_lane_left = note[3]  # The left start of chuni note
-#         note_lane_width = note[4]  # The width of chuni note
-#         # Mapping the note lane to Arcaea lane
-#         a_lane = find_note_lane_overlap_partition(note_lane_left, note_lane_left + note_lane_width)
-#         target_notes.append(aff.Hold(start_time, end_time, a_lane))
-#
-#         if len(note) > 6 and note[6] == "UP":
-#             a_note_x = mapping_midpoint(note_lane_left + note_lane_width / 2, ground=False)
-#             target_notes.append(
-#                 aff.Arc(end_time, end_time + 3, a_note_x, a_note_x, 's',
-#                         1, 1, 0, True, [end_time]))
-#
-#     if note_type in ['SXC', 'SXD', 'SLC', 'SLD']:
-#         if start_time == end_time:
-#             return target_notes
-#         # SXC, SXD, SLC, SLD to Arcaea Arc
-#         arc_start_x = mapping_midpoint(note[3] + note[4] / 2, ground=True)
-#         arc_end_x = mapping_midpoint(note[6] + note[7] / 2, ground=True)
-#         arc_y_defalut = 0
-#         s_easing = 'si' if note_type in ['SXC', 'SLC'] else 's'
-#
-#         target_notes.append(
-#             aff.Arc(start_time, end_time, arc_start_x, arc_end_x, s_easing,
-#                     arc_y_defalut, arc_y_defalut, 0, False, []))
-#     if note_type in ['AIR', 'AUL', 'AUR', 'ADL', 'ADR', 'ADW']:
-#         # AIR, AUL, AUR to Arcaea ArcTap
-#         # usually only marks an air over. so ignoring it just now.
-#         pass
-#     if note_type in ['ASC', 'ASD', 'AHD', 'AHX', 'ALD']:
-#         # ASC ASD AHD AHX: 中二的air hold 绿线，
-#         # 其中AHD AHX定义直线，ASC ASD定义曲线，可定义由哪一个note引导上升，绿线默认在y=5.0位置（arc y=1.0位置）
-#         # ALD：用作表演性质的air线，其x、y轴起始点位置、颜色等均可指定，翻译为完整的arc黑线
-#         # 中二的air线没有宽度，x轴的位置定为常规note的中点 ，即note[3] + note[4] / 2
-#         # ASC, ASD, AHD, ALD to Arcaea Arc Trace。
-#         arc_start_x = mapping_midpoint(note[3] + note[4] / 2, ground=True)
-#         if note_type in ['AHD', 'AHX']:
-#             arc_end_x = arc_start_x
-#         else:
-#             arc_end_x = mapping_midpoint(note[8] + note[9] / 2, ground=True)
-#
-#         arc_y_defalut = 1.0
-#         arc_y_start, arc_y_end = arc_y_defalut, arc_y_defalut
-#         if note_type == 'ALD':
-#             arc_y_start = mapping_y_axis(note[6])
-#             arc_y_end = mapping_y_axis(note[10])
-#             if len(note) > 11:
-#                 arc_color = note[11]
-#
-#         s_easing = 'si' if note_type in ['ASC'] else 's'
-#
-#         target_notes.append(
-#             aff.Arc(start_time, end_time, arc_start_x, arc_end_x, s_easing,
-#                     arc_y_start, arc_y_end, 0, True, []))
-#
-#         # If a note has Suffix "UP", ADD a sky note at the tail.
-#         if len(note) > 5 and note[0] == "AHX" and note[5] == "TAP":
-#             a_note_x = mapping_midpoint(note[3] + note[4] / 2, ground=False)
-#             target_notes.append(
-#                 aff.Arc(end_time, end_time + 3, a_note_x, a_note_x, 's',
-#                         1, 1, 0, True, [end_time]))
-#
-#     return target_notes
 
 
 def get_chuni_air_arrow(start_time, note_x, direction='up'):
@@ -316,19 +184,16 @@ def restrict_y_axis(arc_y):
     return arc_y
 
 
-def convert_notes_by_group(group, bpm) -> list[aff.Note]:
-    # group: {"type": "Single", "sky_end": False, "list": [head_note]}
-    # group: {"type": "Single", "sky_end": True, "list": [head_note, tail_note]}
-    # group: {"type": "Hold", "sky_end": True, "list": [head_note, tail_note]}
-    # group: {"type": "Snake", "sky_end": False, "list": [head_note, ...]}
-    # group: {"type": "Trace", "sky_end": False, "list": [head_note]}
+def convert_notes_by_group(group, bpm, c_audio_beats, a_audio_offset) -> list[aff.Note]:
+    # Group has four types: Single, Hold, Snake, Trace
     target_notes = []
-    last_arc_color = 0
+
     if group["type"] == "Single":
         head_note = group["list"][0]
-        start_time, end_time = convert_time_beats_to_ms(head_note, bpm, aff_audio_offset=Aff_AudioOffset)
+        start_time, end_time = convert_time_beats_to_ms(head_note, bpm, c_audio_beats, aff_audio_offset=a_audio_offset)
         note_lane_left, note_lane_width = head_note[3], head_note[4]
-        # TODO: check FLK as other builds.
+
+        # TODO: Check FLK as other builds.
         if group["sky_end"]:  # build as ArcTap
             a_note_x = mapping_midpoint(note_lane_left + note_lane_width / 2, ground=False)
             target_notes.append(
@@ -338,6 +203,7 @@ def convert_notes_by_group(group, bpm) -> list[aff.Note]:
             target_notes.extend(get_chuni_air_arrow(start_time, a_note_x))
 
         else:
+            # Mapping the note x position to Arcaea lane, for those who can't be mapped, build as ArcTap on the ground.
             a_lane, is_inside_lane = find_note_lane_midpoint_partition(note_lane_left, note_lane_left + note_lane_width)
             if is_inside_lane:
                 target_notes.append(aff.Tap(start_time, a_lane))
@@ -348,14 +214,15 @@ def convert_notes_by_group(group, bpm) -> list[aff.Note]:
 
     elif group["type"] == "Hold":
         head_note = group["list"][0]
-        start_time, end_time = convert_time_beats_to_ms(head_note, bpm, aff_audio_offset=Aff_AudioOffset)
+        start_time, end_time = convert_time_beats_to_ms(head_note, bpm, c_audio_beats, aff_audio_offset=a_audio_offset)
 
         note_lane_left, note_lane_width = head_note[3], head_note[4]
 
+        # Mapping the hold note x position to Arcaea lane, for those who is not inside a lane, find the nearest one.
         a_lane = find_note_lane_overlap_partition(note_lane_left, note_lane_left + note_lane_width)
         target_notes.append(aff.Hold(start_time, end_time, a_lane))
 
-        if group["sky_end"]:  # Add an ArcTap at the end of the hold.
+        if group["sky_end"]:  # Add an ArcTap at the end of the hold if the group end with AIR.
             tail_note = group["list"][1]
 
             a_note_x = mapping_midpoint(tail_note[3] + tail_note[4] / 2, ground=False)
@@ -367,24 +234,19 @@ def convert_notes_by_group(group, bpm) -> list[aff.Note]:
 
     elif group["type"] == "Snake":
         # TODO: Combine continues slide notes to a single Arc.
+        arc_head_time, arc_tail_time = -1, -1
+        arc_head_x, arc_tail_x = -1, -1
+        arc_direction = 0
+        s_easing = 'si'  # Default easing for snake arc
+
+        # TODO：config default y
+        arc_y_default = 0
         for note in group["list"]:
-
             note_type = note[0]
-            start_time, end_time = convert_time_beats_to_ms(note, bpm, aff_audio_offset=Aff_AudioOffset)
-            if note_type in ['SXC', 'SXD', 'SLC', 'SLD']:
-                if start_time == end_time:
-                    return target_notes
-                # SXC, SXD, SLC, SLD to Arcaea Arc
-                # TODO：config slide default y
-                arc_y_defalut = 0
-                arc_x_start = mapping_midpoint(note[3] + note[4] / 2, ground=True)
-                arc_x_end = mapping_midpoint(note[6] + note[7] / 2, ground=True)
-                s_easing = 'si' if note_type in ['SXC', 'SLC'] else 's'
-
-                target_notes.append(
-                    aff.Arc(start_time, end_time, arc_x_start, arc_x_end, s_easing,
-                            arc_y_defalut, arc_y_defalut, 0, False, []))
-            else:  # End with an AIR
+            start_time, end_time = convert_time_beats_to_ms(note, bpm, c_audio_beats, aff_audio_offset=a_audio_offset)
+            if note_type in ['AIR', 'AUL', 'AUR']:
+                assert len(group["list"]) > 1, "AIR note should not be the first note in a snake group."
+                # Build if the group end with an AIR
                 tail_note = note
                 a_note_x = mapping_midpoint(tail_note[3] + tail_note[4] / 2, ground=False)
                 target_notes.append(
@@ -392,45 +254,96 @@ def convert_notes_by_group(group, bpm) -> list[aff.Note]:
                             1, 1, 0, True, [end_time]))
                 # Add chuni air style trace decorations.
                 target_notes.extend(get_chuni_air_arrow(end_time, a_note_x))
+                continue
+
+            x_start = mapping_midpoint(note[3] + note[4] / 2, ground=True)
+            x_end = mapping_midpoint(note[6] + note[7] / 2, ground=True)
+            if start_time == end_time and x_start == x_end:
+                continue
+            if note_type in ['SXC', 'SLC']:
+                this_direction = 1 if x_start < x_end else -1
+                if arc_head_x == -1:
+                    # This is the first note of the snake group.
+                    arc_head_x = x_start
+                    arc_tail_x = x_end
+                    arc_head_time = start_time
+                    arc_tail_time = end_time
+                    arc_direction = this_direction  # Initialize the direction of the arc.
+                else:
+                    # Check if the arc should be cut and add a si arc
+                    if arc_tail_x != x_start or arc_direction != this_direction:
+                        target_notes.append(
+                            aff.Arc(arc_head_time, arc_tail_time, arc_head_x, arc_tail_x, s_easing,
+                                    arc_y_default, arc_y_default, 0, False, []))
+                        arc_head_x = x_start
+                        arc_tail_x = x_end
+                        arc_head_time = start_time
+                        arc_tail_time = end_time
+                        arc_direction = this_direction
+                        # when change direction, shift the easing type.
+                        s_easing = 'so' if s_easing == 'si' else 'si'
+                    else:  # continue the arc
+                        arc_tail_x = x_end
+                        arc_tail_time = end_time
+
+            elif note_type in ['SXD', 'SLD']:
+                if not (arc_tail_x == -1 and arc_tail_time == -1):
+                    # Finish the existing SLC/SXC arc.
+                    target_notes.append(
+                        aff.Arc(arc_head_time, arc_tail_time, arc_head_x, arc_tail_x, s_easing,
+                                arc_y_default, arc_y_default, 0, False, []))
+                    # 因为已经做了以便预筛选，使得一个group中所有的slide都以SLD或SXD结尾（大概），所以这里不需要再做额外的处理。
+                # Build a 's' arc for the SLD/SXD slide, whatever there are any SLC/SXC before.
+                target_notes.append(
+                    aff.Arc(start_time, end_time, x_start, x_end, 's',
+                            arc_y_default, arc_y_default, 0, False, []))
 
     elif group["type"] == "Trace":
         note = group["list"][0]
         note_type = note[0]
-        start_time, end_time = convert_time_beats_to_ms(note, bpm, aff_audio_offset=Aff_AudioOffset)
+        start_time, end_time = convert_time_beats_to_ms(note, bpm, c_audio_beats, aff_audio_offset=a_audio_offset)
 
-        arc_x_start = mapping_midpoint(note[3] + note[4] / 2, ground=True)
-        if note_type in ['AHD', 'AHX']:  # 无平移trace
-            arc_x_end = arc_x_start
-        else:  # 有平移trace
-            arc_x_end = mapping_midpoint(note[8] + note[9] / 2, ground=True)
+        x_start = mapping_midpoint(note[3] + note[4] / 2, ground=True)
+        if note_type in ['AHD', 'AHX']:  # These kind of trace does not shift the x position.
+            x_end = x_start
+        else:  # These kind of trace may shift the x position.
+            x_end = mapping_midpoint(note[8] + note[9] / 2, ground=True)
 
-        arc_y_defalut = 1.0  # 非ALD的，永远在 y=1 位置
-        arc_y_start, arc_y_end = arc_y_defalut, arc_y_defalut
-        if note_type in ['ALD', 'ASD']:
+        arc_y_default = 1.0  # Always set the y position to 1.0 if trace is not an ALD/ASD.
+        arc_y_start, arc_y_end = arc_y_default, arc_y_default
+        if note_type in ['ALD', 'ASD']:  # For ALD/ASD, read the y position.
             arc_y_start = mapping_y_axis(note[6])
             arc_y_end = mapping_y_axis(note[10])
-            if len(note) > 11:
+            if len(note) > 11:  # Read the color if it is defined in the end of the line.
                 arc_color = note[11]
 
-        s_easing = 'si' if note_type in ['ASC'] else 's'  # 仅ASC转换为曲线
+        s_easing = 'si' if note_type in ['ASC'] else 's'  # Only ASC has easing 'si', others are 's'.
 
+        if start_time == end_time and x_start == x_end and arc_y_start == arc_y_end:
+            return target_notes
+        # Build the trace arc.
         target_notes.append(
-            aff.Arc(start_time, end_time, arc_x_start, arc_x_end, s_easing,
+            aff.Arc(start_time, end_time, x_start, x_end, s_easing,
                     arc_y_start, arc_y_end, 0, True, []))
+
+        # For AHD, ASD, AHX, a default AIR-ACTION is made at the end of the trace. Build a short-time RED ARC for it.
         # 对于 AHD ASD AHX，默认转译结尾一个长度为1/8拍的红蛇，作为air-action，TODO：提供选项改为天键
         air_action_time = 60000 / bpm / 8
 
         if note_type in ['AHD', 'ASD', 'AHX']:
             target_notes.append(
-                aff.Arc(end_time, end_time + air_action_time, arc_x_end, arc_x_end, 's',
+                aff.Arc(end_time, end_time + air_action_time, x_end, x_end, 's',
                         restrict_y_axis(arc_y_end), restrict_y_axis(arc_y_end), 1, False, []))
+
+        # For ALD, there are maybe multiple AIR-ACTIONs on the trace, check the duration and interval time value
+        # to make sure of it.
         # 对于ALD，检查持续时间和第五个值是否为间隔时间t
         if note_type == 'ALD':
             if len(note) > 7 and isinstance(note[5], int) and note[5] > 0:
                 t = note[5]
                 duration = note[7]
                 if t < duration:
-                    # 每隔 t offset 添加一个air-action
+                    # For every t offset, add an air-action.
                     for i in range(t, duration, t):
                         # 时间插值
                         audio_beats = 4  # TODO： parametric this.
@@ -438,23 +351,25 @@ def convert_notes_by_group(group, bpm) -> list[aff.Note]:
                         t_start = (start_time +
                                    (i / Chuni_OffsetResolution) * (audio_beats * beat_duration_ms))
                         # 位置插值  TODO：考虑红蛇的位移也进行插值
-                        t_x = arc_x_start + (arc_x_end - arc_x_start) * i / duration
+                        t_x = x_start + (x_end - x_start) * i / duration
                         t_y = restrict_y_axis(arc_y_start + (arc_y_end - arc_y_start) * i / duration)
                         target_notes.append(
                             aff.Arc(t_start, t_start + air_action_time, t_x, t_x, 's',
                                     t_y, t_y, 1, False, []))
                 else:
-                    # 在结尾添加一个 air-action
+                    # By default, add an air-action at the end of the trace.
                     t_y = restrict_y_axis(arc_y_end)
                     target_notes.append(
-                        aff.Arc(end_time, end_time + air_action_time, arc_x_end, arc_x_end, 's',
+                        aff.Arc(end_time, end_time + air_action_time, x_end, x_end, 's',
                                 t_y, t_y, 1, False, []))
                     if arc_y_start != arc_y_end:
+                        # In chunithm, if an ALD have different start and end y pos, parallel air-actions will be added.
+                        # We impl this feature in form of black traces by default.
                         # TODO: 添加重叠的 air-action 黑线效果
                         pass
                         # target_notes.append(get_chuni_y_air_actions(arc_x_start, arc_x_end, arc_y_start, arc_y_end))
 
-        # 对于紧接着地面音符的air线，添加黑线提示，默认情况下不添加天键。TODO：提供选项可添加天键
+        # Add chuni air style trace decorations if a TAP or HOLD note is followed by this trace.TODO：提供选项可添加天键
         if len(note) > 5 and note[5] in ['TAP', 'CHR', 'FLK', 'HLD', 'HXD', 'SLD']:
             # Add ArcTap note
             # target_notes.append(
@@ -462,23 +377,37 @@ def convert_notes_by_group(group, bpm) -> list[aff.Note]:
             #             1, 1, 0, True, [start_time]))
 
             # Add chuni air style trace decorations.
-            target_notes.extend(get_chuni_air_arrow(start_time, arc_x_start))
+            target_notes.extend(get_chuni_air_arrow(start_time, x_start))
     return target_notes
 
 
-def convert_to_aff(timing_list, notes_list) -> aff.AffList:
-    c_bpm = 100
+def convert_to_aff(configs, c_metadata, timing_list, notes_list) -> aff.AffList:
+    aff_audio_offset = configs.get("AudioOffset", 0)
+
+    c_bpm = c_metadata["BPM_DEF"][0]  # default bpm
+    c_audio_beats = c_metadata["MET_DEF"]
 
     # 1. Set BPM and Convert SFL timing_list to AffNote objects
     a_timing_notes = []
     sfl_end_time = 0
+    c_bpms = []
     for c_timing in timing_list:
         if c_timing[0] == 'BPM':
-            c_bpm = float(c_timing[3])
-            a_timing_notes.append(aff.Timing(0, c_bpm))
+            if c_timing[1] == 0:
+                a_timing_notes.append(aff.Timing(0, c_timing[3]))
+                c_bpms.append((0, c_timing[3]))
+            else:
+                bpm_start_time, _ = convert_time_beats_to_ms(c_timing, c_bpm,
+                                                             c_audio_beats, aff_audio_offset=aff_audio_offset)
+                # TODO: 中二可能定义多个时间段的不同base bpm，需要分别计算
+                a_timing_notes.append(aff.Timing(0, c_bpm))
+                c_bpms.append((bpm_start_time, c_bpm))
         if c_timing[0] == 'SFL':
-            start_time, sfl_end_time = convert_time_beats_to_ms(c_timing, c_bpm, aff_audio_offset=Aff_AudioOffset)
-            a_timing_notes.append(aff.Timing(start_time, c_bpm * float(c_timing[4])))
+            sfl_start_time, sfl_end_time = convert_time_beats_to_ms(c_timing, c_bpm,
+                                                                c_audio_beats, aff_audio_offset=aff_audio_offset)
+            a_bpm = c_bpm * float(c_timing[4])
+            a_timing_notes.append(aff.Timing(sfl_start_time, a_bpm))
+
     if sfl_end_time > 0:
         # reset to the original BPM
         a_timing_notes.append(aff.Timing(sfl_end_time, c_bpm))
@@ -528,6 +457,7 @@ def convert_to_aff(timing_list, notes_list) -> aff.AffList:
         elif head_note_type in ['SXC', 'SXD', 'SLC', 'SLD']:
             group["type"] = "Snake"
             curr_tail = (head_note[6], head_note[7])
+            found_D_end = True if head_note_type in ['SXD', 'SLD'] else False
 
             # Search for continued slide notes. SLC to SLC, end with SLD, SXC to SXC, end with SXD
             for j in range(i + 1, len(notes_list)):
@@ -535,33 +465,31 @@ def convert_to_aff(timing_list, notes_list) -> aff.AffList:
                 next_slide_type = next_slide[0]
                 next_slide_head = (next_slide[3], next_slide[4])
 
-                if next_slide_type == head_note_type and next_slide_head == curr_tail:
-                    group["list"].append(next_slide)
-                    curr_tail = (next_slide[6], next_slide[7])
-                    processed_indices.add(j)
-                elif (next_slide_type == 'SLD' and head_note_type == 'SLC') \
-                        or (next_slide_type == 'SXD' and head_note_type == 'SXC') \
-                        and next_slide_head == curr_tail:
-                    group["list"].append(next_slide)
-                    curr_tail = (next_slide[6], next_slide[7])
-                    processed_indices.add(j)
-                    # 再检查slide尾部紧跟着的下一个note是否是air
-                    if j + 1 < len(notes_list):
-                        end_note = notes_list[j + 1]
+                if not found_D_end:
+                    if next_slide_type == head_note_type and next_slide_head == curr_tail:
+                        group["list"].append(next_slide)
+                        curr_tail = (next_slide[6], next_slide[7])
+                        processed_indices.add(j)
+                        continue
+                    elif (next_slide_type == 'SLD' and head_note_type == 'SLC') \
+                            or (next_slide_type == 'SXD' and head_note_type == 'SXC') \
+                            and next_slide_head == curr_tail:
+                        group["list"].append(next_slide)
+                        curr_tail = (next_slide[6], next_slide[7])
+                        processed_indices.add(j)
+                        found_D_end = True
+                        continue
+                else:
+                    if next_slide_type in ['AIR', 'AUL', 'AUR']:
+                        end_note = next_slide
                         end_note_target = end_note[5] if len(end_note) > 5 else None
                         end_note_position = (end_note[3], end_note[4])
-                        if end_note[0] in ['AIR', 'AUL', 'AUR'] and end_note_target == next_slide_type \
-                                and end_note_position == curr_tail:
+                        if end_note_target in ['SXD', 'SLD'] and end_note_position == curr_tail:
                             group["sky_end"] = True
                             group["list"].append(end_note)
-                            processed_indices.add(j + 1)
-                    break
-                if head_note_type in ['SXD', 'SLD'] and next_slide_type in ['AIR', 'AUL', 'AUR'] \
-                        and next_slide_head == curr_tail:
-                    group["sky_end"] = True
-                    group["list"].append(next_slide)
-                    processed_indices.add(j)
-                    break
+                            processed_indices.add(j)
+                        break
+
         elif head_note_type in ['ASC']:
             group["type"] = "Trace"
             # 可以像slide一样做合并处理，不过由于默认是黑线，有无合并视觉上看起来都相似，先跳过
@@ -583,27 +511,14 @@ def convert_to_aff(timing_list, notes_list) -> aff.AffList:
         a_note_groups.append(group)
 
     # Convert the note groups to arcaea notes
-
     for group in a_note_groups:
-        converted_notes = convert_notes_by_group(group, bpm=c_bpm)
+        converted_notes = convert_notes_by_group(group, c_bpm, c_audio_beats, aff_audio_offset)
         if len(converted_notes) > 0:
             a_notes.extend(converted_notes)
 
-    # old version
-    # for c_note in notes_list:
-    #     start_time, end_time = convert_time_beats_to_ms(c_note, c_bpm, aff_audio_offset=Aff_AudioOffset)
-    #
-    #     # Convert chuni note to arcaea note by type.
-    #     c_type = c_note[0]
-    #     converted_notes = convert_note_type(c_type, start_time, end_time, c_note)
-    #     if len(converted_notes) > 0:
-    #         a_notes.extend(converted_notes)
-
     # 3. Combine timing and notes to AffList
-    # a_notes.append(aff.TimingGroup(a_timing_notes))
     a_notes.extend(a_timing_notes)
     afflist = aff.AffList(a_notes)
-    # afflist.offsetto(0)
     return afflist
 
 
@@ -611,8 +526,162 @@ def write_aff_file(aff_list, file_path):
     aff.dumps(aff_list, file_path)
 
 
+def get_c_music_info(xml_file, c2s_file):
+    tree = ET.parse(xml_file)
+    root = tree.getroot()
+
+    music_name = root.find('.//name/str').text.strip()
+    artist_name = root.find('.//artistName/str').text.strip()
+
+    # 获得c2s file的文件名,去除扩展名:
+    c2s_file_name = os.path.splitext(os.path.basename(c2s_file))[0]
+    # 获得文件名_后的部分：
+    c2s_type = c2s_file_name.split('_')[1]
+    difficulty_table = ['Basic', 'Advanced', 'Expert', 'Master', 'ULTIMA', "WORLD'S END"]
+
+    return {
+        "MusicName": music_name,
+        "ArtistName": artist_name,
+        "DifficultyType": int(c2s_type),
+        "DifficultyName": difficulty_table[int(c2s_type)],
+    }
+
+
+
+
+
+def create_acc_project(aff_list, c_metadata, configs, music_info, style='ArcCreate'):
+    def sanitize_filename(filename):
+        # Windows disallowed characters: \ / : * ? " < > |
+        return re.sub(r'[\\/:*?"<>|]', '_', filename)
+
+    def get_arcproj_charts_format(chart):
+        return f"""chartPath: {chart["chartPath"]}
+  audioPath: {chart["audioPath"]}
+  jacketPath: {chart["jacketPath"]}
+  baseBpm: {chart["baseBpm"]}
+  bpmText: {chart["bpmText"]}
+  syncBaseBpm: {chart["syncBaseBpm"]}
+  title: {chart["title"]}
+  composer: {chart["composer"]}
+  charter: {chart["charter"]}
+  alias: {chart["alias"]}
+  illustrator: {chart["illustrator"]}
+  difficulty: {chart["difficulty"]}
+  difficultyColor: {chart["difficultyColor"]}
+  lastWorkingTiming: {chart["lastWorkingTiming"]}
+  previewEnd: {chart["previewEnd"]}\n"""
+
+    creator_string = c_metadata["CREATOR"][0]
+    c_bpm = c_metadata["BPM_DEF"][0]
+
+    if configs["AffProjectName"] != "":
+        arcproj_name = configs["AffProjectName"]
+    else:
+        arcproj_name = music_info['MusicName']
+
+    # Sanitize the arcproj_name
+    arcproj_name = sanitize_filename(arcproj_name)
+
+    arcproj_path = configs["AffProjectDirPath"]
+    aff_difficulty_type = music_info["DifficultyType"] if music_info["DifficultyType"] < 4 else 4
+
+    # Check if arcproj_path exists, if not, create it.
+    if not os.path.exists(arcproj_path):
+        os.makedirs(arcproj_path)
+
+    # Check if base.ogg exists, if not, create it.
+    if not os.path.exists(os.path.join(arcproj_path, "base.ogg")):
+        with open(os.path.join(arcproj_path, "base.ogg"), "w") as file:
+            pass
+
+    # Check if base.png exists, if not, create it.
+    if not os.path.exists(os.path.join(arcproj_path, "base.jpg")):
+        with open(os.path.join(arcproj_path, "base.jpg"), "w") as file:
+            pass
+
+    # Create a Aff file:
+    write_aff_file(aff_list, os.path.join(arcproj_path, f"{aff_difficulty_type}.aff"))
+
+    if style == 'ArcCreate':
+        # Create a ArcCreate project config
+        arcproj_config = {
+            "chartPath": f"{aff_difficulty_type}.aff",
+            "audioPath": "base.ogg",
+            "jacketPath": "base.jpg",
+            "baseBpm": c_bpm,
+            "bpmText": f"{c_bpm}",
+            "syncBaseBpm": "true",
+            "title": music_info["MusicName"],
+            "composer": music_info["ArtistName"],
+            "charter": f"{creator_string}",
+            "alias": "Converted by AirARChuni version 0.1. Please be advised that this beatmap is not intended for "
+                     "using in any public forum.",
+            "illustrator": "\'\'",
+            "difficulty": music_info["DifficultyName"],
+            "difficultyColor": "\'#482B54FF\'",
+            "lastWorkingTiming": 0,
+            "previewEnd": 5000,
+        }
+        # Write .arcproj file:
+        f = os.path.join(arcproj_path, f"{arcproj_name}.arcproj")
+        if os.path.exists(f):
+            # check if chartPath in the file, if not, append it.
+            if not any(arcproj_config["chartPath"] in line for line in open(f)):
+                with open(f, "a") as file:
+                    file.write(f"- {get_arcproj_charts_format(arcproj_config)}")
+        else:
+            with open(os.path.join(arcproj_path, f"{arcproj_name}.arcproj"), "w") as file:
+                file.write(f"lastOpenedChartPath: {arcproj_config['chartPath']}\n")
+                file.write(f"charts:\n- {get_arcproj_charts_format(arcproj_config)}")
+
+    elif style == 'Arcade':
+        pass
+    else:
+        raise ValueError(f"Unsupported project style: {style}")
+
+    return arcproj_path
+
+
+def make_arcaea_project(aff_list, configs, c_metadata, style='ArcCreate'):
+    if configs["MusicInfoFilePath"] and configs["MusicInfoFilePath"].endswith('.xml'):
+        music_info = get_c_music_info(configs["MusicInfoFilePath"], configs["FilePath"])
+    else:
+        music_info = {
+            "MusicName": configs["MusicName"],
+            "ArtistName": configs["ArtistName"],
+            "DifficultyType": configs["DifficultyType"],
+            "DifficultyName": configs["DifficultyName"],
+        }
+    # Make Project files
+    p_path = create_acc_project(aff_list, c_metadata, configs, music_info, style=style)
+
+    # make os open the project folder
+    os.startfile(p_path)
+
+
+def exec_convert(configs):
+    file_path = configs["FilePath"]
+    c_metadata, c_timing_list, c_notes_list = read_c2s_file(file_path)
+    aff_list = convert_to_aff(configs, c_metadata, c_timing_list, c_notes_list)
+    # write_aff_file(aff_list, file_path.replace('.c2s', '.aff'))
+    make_arcaea_project(aff_list, configs, c_metadata, style=configs["AffProjectStyle"])
+
+
 # 使用示例
-file_path = r"D:\ARC_Fanmade\Charts\ArcCreateProjects\蜘蛛丝\music2060\2060_02.c2s"  # 替换为你的文件路径
-c_metadata, c_timing_list, c_notes_list = read_c2s_file(file_path)
-aff_list = convert_to_aff(c_timing_list, c_notes_list)
-write_aff_file(aff_list, file_path.replace('.c2s', '.aff'))
+configs = {
+    "FilePath": r"",
+    "MusicInfoFilePath": r"",
+    "AudioOffset": 0,
+    "MusicName": "",
+    "ArtistName": "",
+    "DifficultyType": 2,
+    "DifficultyName": "Master",
+    "AffProjectDirPath": r"",
+    "AffProjectStyle": "ArcCreate",
+    "AffProjectName": "",
+    "ConvertConfigs": {
+        "check_note_overlapping": False,
+    }
+}
+exec_convert(configs)
