@@ -1,14 +1,13 @@
 import traceback
 
 import streamlit as st
-import os
 from c2s2aff import exec_convert
 
 def main():
     st.title("AirARChuni Version 0.1")
 
     # Language selection
-    language = st.selectbox("Select Language / 选择语言", ["English", "中文"])
+    language = st.selectbox("Select Language / 选择语言", ["中文", "English"])
 
     if language == "English":
         labels = {
@@ -29,7 +28,7 @@ def main():
             "audio_offset": "Audio Offset (ms)",
             "aff_project_style": "Aff Project Style ('Single' for only output .aff file)",
             "check_note_overlapping": "Check Note Overlapping",
-            "other_settings": "Other Settings",
+            "other_settings": "Other Settings (Working on it ...)",
             "convert": "Convert",
             "no_file": "Please upload a .c2s file!",
             "success": "Conversion Completed!"
@@ -53,7 +52,7 @@ def main():
             "audio_offset": "音频偏移（ms）",
             "aff_project_style": "Aff 项目格式（'Single' 则仅输出 .aff 文件）",
             "check_note_overlapping": "检查音符重叠",
-            "other_settings": "其他设置",
+            "other_settings": "其他设置（暂未开放）",
             "convert": "转换",
             "no_file": "请至少上传一个 .c2s 文件！",
             "success": "转换完成！"
@@ -92,9 +91,8 @@ def main():
     if language == "English":
         st.markdown("""
         **Instructions:** \n
-        If an Music.xml File is uploaded, or your do not want an Arcade/ArcCreate Project,(only .aff),
-        you can leave these settings as default. \n
-        Otherwise, fill them manually. 
+        If no Music.xml File is uploaded, you may need to fill in the following settings manually. \n
+        Otherwise, if your do not want an Arcade/ArcCreate Project(only .aff),you can also leave these settings as default. \n 
         """)
     else:
         st.markdown("""
@@ -109,7 +107,7 @@ def main():
     aff_project_name = st.text_input(labels["aff_project_name"], "")
 
     st.header(labels["conversion_settings"])
-    audio_offset = st.number_input(labels["audio_offset"], 0)
+    audio_offset = st.number_input(labels["audio_offset"], min_value=-100000, max_value=100000, value=0)
     aff_project_style = st.selectbox(labels["aff_project_style"], ["ArcCreate", "Arcade", "Single"])
 
     st.header(labels["other_settings"])
@@ -144,13 +142,13 @@ def main():
             configs["AffProjectName"] = ""
 
         try:
-            zip_path = exec_convert(configs)
-            st.success("Conversion Completed!")
+            zip_path, proj_name = exec_convert(configs)
+            st.success("Conversion Completed!" if language == "English" else "转换完成！")
             with open(zip_path, "rb") as f:
                 st.download_button(
-                    label="Download Converted Files",
+                    label="Download Converted Files" if language == "English" else "下载文件",
                     data=f,
-                    file_name="converted_files.zip",
+                    file_name=f"{proj_name}.zip",
                     mime="application/zip"
                 )
         except Exception as e:

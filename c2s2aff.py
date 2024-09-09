@@ -178,7 +178,7 @@ def convert_time_beats_to_ms_dynamic(c_note, c_bpms: list, c_audio_betas, aff_au
             # Calculate end offset time in milliseconds
             end_offset = (duration / Chuni_OffsetResolution) * (audio_beats * beat_duration_ms)
             end_time_ms += end_offset  # Calculate end time
-            return int(start_time_ms), int(end_time_ms), bpm
+            return int(start_time_ms + aff_audio_offset), int(end_time_ms + aff_audio_offset), bpm
         elif measure > bpm_next_m:
             start_time_ms += ((bpm_next_m - bpm_now_m) * (audio_beats * beat_duration_ms) +
                               (bpm_next_b / Chuni_OffsetResolution) * (audio_beats * beat_duration_ms))
@@ -440,8 +440,7 @@ def convert_notes_by_group(group, bpm_sets, c_audio_beats, a_audio_offset) -> li
 
 
 def convert_to_aff(configs, c_metadata, timing_list, notes_list) -> aff.AffList:
-    aff_audio_offset = configs.get("AudioOffset", 0)
-
+    aff_audio_offset = int(configs["AudioOffset"])
     c_bpm = c_metadata["BPM_DEF"][0]  # default start base BPM
     c_audio_beats = c_metadata["MET_DEF"]
 
@@ -604,27 +603,41 @@ def get_c_music_info(xml_file, c2s_file_name):
     }
 
 
-def create_acc_project(aff_list, c_metadata, configs, music_info, style='ArcCreate'):
+def make_arcaea_project(aff_list, configs, c_metadata, style='ArcCreate'):
+    if configs["MusicInfoFilePath"] and configs["MusicInfoFilePath"].endswith('.xml'):
+        music_info = get_c_music_info(configs["MusicInfoFilePath"], configs["FileName"])
+    else:
+        music_info = {
+            "MusicName": configs["MusicName"],
+            "ArtistName": configs["ArtistName"],
+            "DifficultyType": configs["DifficultyType"],
+            "DifficultyName": configs["DifficultyName"],
+        }
+
+    # Make Project files
+    # p_path, proj_name = create_acc_project(aff_list, c_metadata, configs, music_info, style=style)
     def sanitize_filename(filename):
         # Windows disallowed characters: \ / : * ? " < > |
         return re.sub(r'[\\/:*?"<>|]', '_', filename)
 
     def get_arcproj_charts_format(chart):
-        return f"""chartPath: {chart["chartPath"]}
-  audioPath: {chart["audioPath"]}
-  jacketPath: {chart["jacketPath"]}
-  baseBpm: {chart["baseBpm"]}
-  bpmText: {chart["bpmText"]}
-  syncBaseBpm: {chart["syncBaseBpm"]}
-  title: {chart["title"]}
-  composer: {chart["composer"]}
-  charter: {chart["charter"]}
-  alias: {chart["alias"]}
-  illustrator: {chart["illustrator"]}
-  difficulty: {chart["difficulty"]}
-  difficultyColor: {chart["difficultyColor"]}
-  lastWorkingTiming: {chart["lastWorkingTiming"]}
-  previewEnd: {chart["previewEnd"]}\n"""
+        lines = [
+            f"audioPath: {chart['audioPath']}",
+            f"jacketPath: {chart['jacketPath']}",
+            f"baseBpm: {chart['baseBpm']}",
+            f"bpmText: {chart['bpmText']}",
+            f"syncBaseBpm: {chart['syncBaseBpm']}",
+            f"title: {chart['title']}",
+            f"composer: {chart['composer']}",
+            f"charter: {chart['charter']}",
+            f"alias: {chart['alias']}",
+            f"illustrator: {chart['illustrator']}",
+            f"difficulty: {chart['difficulty']}",
+            f"difficultyColor: {chart['difficultyColor']}",
+            f"lastWorkingTiming: {chart['lastWorkingTiming']}",
+            f"previewEnd: {chart['previewEnd']}\n"
+        ]
+        return f"chartPath: {chart['chartPath']}\n" + '\n'.join(f"  {line}" for line in lines)
 
     creator_string = c_metadata["CREATOR"][0]
     c_bpm = c_metadata["BPM_DEF"][0]
@@ -683,43 +696,27 @@ def create_acc_project(aff_list, c_metadata, configs, music_info, style='ArcCrea
                 "previewEnd": 5000,
             }
             # Write .arcproj file:
-            f = os.path.join(arcproj_path, f"{arcproj_name}.arcproj")
-            if os.path.exists(f):
-                # check if chartPath in the file, if not, append it.
-                if not any(arcproj_config["chartPath"] in line for line in open(f)):
-                    with open(f, "a") as file:
-                        file.write(f"- {get_arcproj_charts_format(arcproj_config)}")
-            else:
-                with open(os.path.join(arcproj_path, f"{arcproj_name}.arcproj"), "w") as file:
-                    file.write(f"lastOpenedChartPath: {arcproj_config['chartPath']}\n")
-                    file.write(f"charts:\n- {get_arcproj_charts_format(arcproj_config)}")
+            # f = os.path.join(arcproj_path, f"{arcproj_name}.arcproj")
+            # if os.path.exists(f):
+            #     # check if chartPath in the file, if not, append it.
+            #     if not any(arcproj_config["chartPath"] in line for line in open(f)):
+            #         with open(f, "a") as file:
+            #             file.write(f"- {get_arcproj_charts_format(arcproj_config)}")
+            # else:
+            with open(os.path.join(arcproj_path, f"{arcproj_name}.arcproj"), "w") as file:
+                file.write(f"lastOpenedChartPath: {arcproj_config['chartPath']}\n")
+                file.write(f"charts:\n- {get_arcproj_charts_format(arcproj_config)}")
 
         elif style == 'Arcade':
             pass
         else:
             raise ValueError(f"Unsupported project style: {style}")
 
-    return arcproj_path, arcproj_name
+        # Create a zip file from the temporary directory
+        zip_path = os.path.join(tempfile.gettempdir(), f"{arcproj_name}.zip")
+        shutil.make_archive(zip_path.replace('.zip', ''), 'zip', arcproj_path)
 
-
-def make_arcaea_project(aff_list, configs, c_metadata, style='ArcCreate'):
-    if configs["MusicInfoFilePath"] and configs["MusicInfoFilePath"].endswith('.xml'):
-        music_info = get_c_music_info(configs["MusicInfoFilePath"], configs["FileName"])
-    else:
-        music_info = {
-            "MusicName": configs["MusicName"],
-            "ArtistName": configs["ArtistName"],
-            "DifficultyType": configs["DifficultyType"],
-            "DifficultyName": configs["DifficultyName"],
-        }
-    # Make Project files
-    p_path, proj_name = create_acc_project(aff_list, c_metadata, configs, music_info, style=style)
-
-    # Create a zip file from the temporary directory
-    zip_path = os.path.join(tempfile.gettempdir(), f"{proj_name}.zip")
-    shutil.make_archive(zip_path.replace('.zip', ''), 'zip', p_path)
-
-    return zip_path
+    return zip_path, arcproj_name
 
 
 def exec_convert(configs):
@@ -742,5 +739,5 @@ def exec_convert(configs):
 
     c_metadata, c_timing_list, c_notes_list = read_c2s_file(file_path)
     aff_list = convert_to_aff(configs, c_metadata, c_timing_list, c_notes_list)
-    zip_path = make_arcaea_project(aff_list, configs, c_metadata, style=configs["AffProjectStyle"])
-    return zip_path
+    zip_path, proj_name = make_arcaea_project(aff_list, configs, c_metadata, style=configs["AffProjectStyle"])
+    return zip_path, proj_name
