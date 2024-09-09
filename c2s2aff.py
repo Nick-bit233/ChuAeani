@@ -1,5 +1,7 @@
 import os
 import re
+import tempfile
+import shutil
 import xml.etree.ElementTree as ET
 from arcfutil import aff
 
@@ -357,7 +359,7 @@ def convert_notes_by_group(group, bpm_sets, c_audio_beats, a_audio_offset) -> li
         note = group["list"][0]
         note_type = note[0]
         start_time, end_time, curr_bpm = convert_time_beats_to_ms_dynamic(note, bpm_sets, c_audio_beats,
-                                                                   aff_audio_offset=a_audio_offset)
+                                                                          aff_audio_offset=a_audio_offset)
 
         x_start = mapping_midpoint(note[3] + note[4] / 2, ground=True)
         if note_type in ['AHD', 'AHX']:  # These kind of trace does not shift the x position.
@@ -583,17 +585,15 @@ def write_aff_file(aff_list, file_path):
     aff.dumps(aff_list, file_path)
 
 
-def get_c_music_info(xml_file, c2s_file):
+def get_c_music_info(xml_file, c2s_file_name):
     tree = ET.parse(xml_file)
     root = tree.getroot()
 
     music_name = root.find('.//name/str').text.strip()
     artist_name = root.find('.//artistName/str').text.strip()
 
-    # 获得c2s file的文件名,去除扩展名:
-    c2s_file_name = os.path.splitext(os.path.basename(c2s_file))[0]
     # 获得文件名_后的部分：
-    c2s_type = c2s_file_name.split('_')[1]
+    c2s_type = c2s_file_name.split('.')[0].split('_')[1]
     difficulty_table = ['Basic', 'Advanced', 'Expert', 'Master', 'ULTIMA', "WORLD'S END"]
 
     return {
@@ -637,69 +637,74 @@ def create_acc_project(aff_list, c_metadata, configs, music_info, style='ArcCrea
     # Sanitize the arcproj_name
     arcproj_name = sanitize_filename(arcproj_name)
 
-    arcproj_path = configs["AffProjectDirPath"]
-    aff_difficulty_type = music_info["DifficultyType"] if music_info["DifficultyType"] < 4 else 4
+    # Create a temporary directory
+    with tempfile.TemporaryDirectory() as arcproj_path:
+        aff_difficulty_type = music_info["DifficultyType"] if music_info["DifficultyType"] < 4 else 4
 
-    # Check if arcproj_path exists, if not, create it.
-    if not os.path.exists(arcproj_path):
-        os.makedirs(arcproj_path)
-
-    # Check if base.ogg exists, if not, create it.
-    if not os.path.exists(os.path.join(arcproj_path, "base.ogg")):
-        with open(os.path.join(arcproj_path, "base.ogg"), "w") as file:
-            pass
-
-    # Check if base.png exists, if not, create it.
-    if not os.path.exists(os.path.join(arcproj_path, "base.jpg")):
-        with open(os.path.join(arcproj_path, "base.jpg"), "w") as file:
-            pass
-
-    # Create a Aff file:
-    write_aff_file(aff_list, os.path.join(arcproj_path, f"{aff_difficulty_type}.aff"))
-
-    if style == 'ArcCreate':
-        # Create a ArcCreate project config
-        arcproj_config = {
-            "chartPath": f"{aff_difficulty_type}.aff",
-            "audioPath": "base.ogg",
-            "jacketPath": "base.jpg",
-            "baseBpm": c_bpm,
-            "bpmText": f"{c_bpm}",
-            "syncBaseBpm": "true",
-            "title": music_info["MusicName"],
-            "composer": music_info["ArtistName"],
-            "charter": f"{creator_string}",
-            "alias": "Converted by AirARChuni version 0.1. Please be advised that this beatmap is not intended for "
-                     "using in any public forum.",
-            "illustrator": "\'\'",
-            "difficulty": music_info["DifficultyName"],
-            "difficultyColor": "\'#482B54FF\'",
-            "lastWorkingTiming": 0,
-            "previewEnd": 5000,
-        }
-        # Write .arcproj file:
-        f = os.path.join(arcproj_path, f"{arcproj_name}.arcproj")
-        if os.path.exists(f):
-            # check if chartPath in the file, if not, append it.
-            if not any(arcproj_config["chartPath"] in line for line in open(f)):
-                with open(f, "a") as file:
-                    file.write(f"- {get_arcproj_charts_format(arcproj_config)}")
+        # Check if base.ogg exists, if not, create it.
+        if configs["OggFile"]:
+            ogg_content = configs["OggFile"].read()
+            with open(os.path.join(arcproj_path, "base.ogg"), "wb") as file:
+                file.write(ogg_content)
         else:
-            with open(os.path.join(arcproj_path, f"{arcproj_name}.arcproj"), "w") as file:
-                file.write(f"lastOpenedChartPath: {arcproj_config['chartPath']}\n")
-                file.write(f"charts:\n- {get_arcproj_charts_format(arcproj_config)}")
+            # Create dummy files base.ogg
+            with open(os.path.join(arcproj_path, "base.ogg"), "w") as file:
+                pass
 
-    elif style == 'Arcade':
-        pass
-    else:
-        raise ValueError(f"Unsupported project style: {style}")
+        if configs["JpgFile"]:
+            jpg_content = configs["JpgFile"].read()
+            with open(os.path.join(arcproj_path, "base.jpg"), "wb") as file:
+                file.write(jpg_content)
+        else:
+            # Create dummy files base.jpg
+            with open(os.path.join(arcproj_path, "base.jpg"), "w") as file:
+                pass
+                # Create Aff file:
+        write_aff_file(aff_list, os.path.join(arcproj_path, f"{aff_difficulty_type}.aff"))
 
-    return arcproj_path
+        if style == 'ArcCreate':
+            # Create a ArcCreate project config
+            arcproj_config = {
+                "chartPath": f"{aff_difficulty_type}.aff",
+                "audioPath": "base.ogg",
+                "jacketPath": "base.jpg",
+                "baseBpm": c_bpm,
+                "bpmText": f"{c_bpm}",
+                "syncBaseBpm": "true",
+                "title": music_info["MusicName"],
+                "composer": music_info["ArtistName"],
+                "charter": f"{creator_string}",
+                "alias": "Converted by AirARChuni version 0.1. Please be advised that this beatmap is not intended for "
+                         "using in any public forum.",
+                "illustrator": "\'\'",
+                "difficulty": music_info["DifficultyName"],
+                "difficultyColor": "\'#482B54FF\'",
+                "lastWorkingTiming": 0,
+                "previewEnd": 5000,
+            }
+            # Write .arcproj file:
+            f = os.path.join(arcproj_path, f"{arcproj_name}.arcproj")
+            if os.path.exists(f):
+                # check if chartPath in the file, if not, append it.
+                if not any(arcproj_config["chartPath"] in line for line in open(f)):
+                    with open(f, "a") as file:
+                        file.write(f"- {get_arcproj_charts_format(arcproj_config)}")
+            else:
+                with open(os.path.join(arcproj_path, f"{arcproj_name}.arcproj"), "w") as file:
+                    file.write(f"lastOpenedChartPath: {arcproj_config['chartPath']}\n")
+                    file.write(f"charts:\n- {get_arcproj_charts_format(arcproj_config)}")
+
+        elif style == 'Arcade':
+            pass
+        else:
+            raise ValueError(f"Unsupported project style: {style}")
+
+    return arcproj_path, arcproj_name
 
 
 def make_arcaea_project(aff_list, configs, c_metadata, style='ArcCreate'):
     if configs["MusicInfoFilePath"] and configs["MusicInfoFilePath"].endswith('.xml'):
-        music_info = get_c_music_info(configs["MusicInfoFilePath"], configs["FilePath"])
+        music_info = get_c_music_info(configs["MusicInfoFilePath"], configs["FileName"])
     else:
         music_info = {
             "MusicName": configs["MusicName"],
@@ -708,34 +713,34 @@ def make_arcaea_project(aff_list, configs, c_metadata, style='ArcCreate'):
             "DifficultyName": configs["DifficultyName"],
         }
     # Make Project files
-    p_path = create_acc_project(aff_list, c_metadata, configs, music_info, style=style)
+    p_path, proj_name = create_acc_project(aff_list, c_metadata, configs, music_info, style=style)
 
-    # make os open the project folder
-    os.startfile(p_path)
+    # Create a zip file from the temporary directory
+    zip_path = os.path.join(tempfile.gettempdir(), f"{proj_name}.zip")
+    shutil.make_archive(zip_path.replace('.zip', ''), 'zip', p_path)
+
+    return zip_path
 
 
 def exec_convert(configs):
-    file_path = configs["FilePath"]
+    # Read file content from streamlit file object
+    c2s_file_content = configs["File"].read()
+    c2s_file_name = configs["File"].name
+    file_path = tempfile.mktemp(suffix=".c2s")
+    with open(file_path, "wb") as file:
+        file.write(c2s_file_content)
+    configs["FileName"] = c2s_file_name
+
+    if configs["MusicInfoFile"]:
+        music_info_file_content = configs["MusicInfoFile"].read()
+        music_info_file_path = tempfile.mktemp(suffix=".xml")
+        with open(music_info_file_path, "wb") as file:
+            file.write(music_info_file_content)
+        configs["MusicInfoFilePath"] = music_info_file_path
+    else:
+        configs["MusicInfoFilePath"] = None
+
     c_metadata, c_timing_list, c_notes_list = read_c2s_file(file_path)
     aff_list = convert_to_aff(configs, c_metadata, c_timing_list, c_notes_list)
-    # write_aff_file(aff_list, file_path.replace('.c2s', '.aff'))
-    make_arcaea_project(aff_list, configs, c_metadata, style=configs["AffProjectStyle"])
-
-
-# # 使用示例
-# configs = {
-#     "FilePath": r"",
-#     "MusicInfoFilePath": r"",
-#     "AudioOffset": 0,
-#     "MusicName": "",
-#     "ArtistName": "",
-#     "DifficultyType": 2,
-#     "DifficultyName": "Master",
-#     "AffProjectDirPath": r"",
-#     "AffProjectStyle": "ArcCreate",
-#     "AffProjectName": "",
-#     "ConvertConfigs": {
-#         "check_note_overlapping": False,
-#     }
-# }
-# exec_convert(configs)
+    zip_path = make_arcaea_project(aff_list, configs, c_metadata, style=configs["AffProjectStyle"])
+    return zip_path
