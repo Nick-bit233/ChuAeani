@@ -87,8 +87,11 @@ class ConverterUI:
                 "check_note_overlapping": dpg.get_value(self.check_note_overlapping)
             }
         }
-        self.exec_convert_func(configs)
-        dpg.add_text("Conversion Successful!", parent=dpg.last_item())
+        try:
+            self.exec_convert_func(configs)
+            dpg.add_text("Conversion Successful!", parent=dpg.last_item())
+        except Exception as e:
+            dpg.add_text(f"Conversion Failed: {e}", parent=dpg.last_item(), color=(255, 0, 0))
 
 
 def start_ui(exec_convert_func):
@@ -100,7 +103,7 @@ def start_ui(exec_convert_func):
     #     dpg.bind_font(default_font)
 
     ConverterUI(exec_convert_func)
-    dpg.create_viewport(title='AirARChuni Ver0.1', width=800, height=800)
+    dpg.create_viewport(title='AirARChuni GUI Ver0.1', width=800, height=800)
     dpg.setup_dearpygui()
     dpg.show_viewport()
     dpg.start_dearpygui()
