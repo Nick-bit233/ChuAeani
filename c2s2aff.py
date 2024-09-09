@@ -703,7 +703,7 @@ def make_arcaea_project(aff_list, configs, c_metadata, style='ArcCreate'):
             #         with open(f, "a") as file:
             #             file.write(f"- {get_arcproj_charts_format(arcproj_config)}")
             # else:
-            with open(os.path.join(arcproj_path, f"{arcproj_name}.arcproj"), "w") as file:
+            with open(os.path.join(arcproj_path, f"{arcproj_name}.arcproj"), "w", encoding="utf-8") as file:
                 file.write(f"lastOpenedChartPath: {arcproj_config['chartPath']}\n")
                 file.write(f"charts:\n- {get_arcproj_charts_format(arcproj_config)}")
 
