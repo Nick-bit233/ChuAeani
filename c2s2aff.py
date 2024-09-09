@@ -29,21 +29,21 @@ def read_c2s_file(file_path):
     metadata = {}
     for line in first_part:
         key, *values = line.split('\t')
-        metadata[key] = [convert_to_number(v) for v in values]  # 转换值
+        metadata[key] = [convert_to_number(v) for v in values]
 
     # The second part of the file contains timing information
     second_part = data[1].strip().split('\n')
     timing_list = []
     for line in second_part:
         elements = line.split('\t')
-        timing_list.append([convert_to_number(e) for e in elements])  # 转换值
+        timing_list.append([convert_to_number(e) for e in elements])
 
     # The last part of the file contains all notes info.
     third_part = data[2].strip().split('\n')
     notes_list = []
     for line in third_part:
         elements = line.split('\t')
-        notes_list.append([convert_to_number(e) for e in elements])  # 转换值
+        notes_list.append([convert_to_number(e) for e in elements])
 
     return metadata, timing_list, notes_list
 
@@ -91,44 +91,96 @@ def find_note_lane_midpoint_partition(a, b):
     # use arcaea experimental ArcTap that can shift note width to corresponding to chuni note width.
 
 
-def convert_time_beats_to_ms(c_note, bpm, c_audio_betas, aff_audio_offset=0):
+# def convert_time_beats_to_ms(c_note, bpm, c_audio_betas, aff_audio_offset=0):
+#     audio_beats, audio_note_time = c_audio_betas[0], c_audio_betas[1]
+#     measure = c_note[1]  # The measure number usually in the second position
+#     offset = c_note[2]  # The offset usually in the third position
+#
+#     # Calculate the duration of each beat in milliseconds
+#     beat_duration_ms = 60000 / bpm
+#
+#     # Calculate the start time of the measure in milliseconds
+#     measure_start_time_ms = (measure - 1) * (audio_beats * beat_duration_ms)
+#
+#     # Calculate the time corresponding to the offset in milliseconds
+#     offset_time_ms = (offset / Chuni_OffsetResolution) * (audio_beats * beat_duration_ms)
+#
+#     # Calculate the absolute time for the note
+#     start_time_ms = measure_start_time_ms + offset_time_ms + aff_audio_offset
+#
+#     # Initialize end time to start time by default
+#     end_time_ms = start_time_ms
+#
+#     duration = 0
+#     # For SFL timing line, duration specified at index 3
+#     if c_note[0] == 'SFL' and isinstance(c_note[3], int):
+#         duration = c_note[3]
+#     # For ASC ASD and ALD, duration specified at index 7
+#     elif c_note[0] in ['ASC', 'ASD', 'ALD'] and len(c_note) > 7 and isinstance(c_note[7], int):
+#         duration = c_note[7]
+#     elif c_note[0] in ['AHX'] and len(c_note) > 6 and isinstance(c_note[6], int):
+#         duration = c_note[6]
+#     # Other types notes, duration specified at index 5
+#     elif len(c_note) > 5 and isinstance(c_note[5], int):
+#         duration = c_note[5]  # Get the duration from c_note
+#
+#     # Calculate end offset time in milliseconds
+#     end_offset = (duration / Chuni_OffsetResolution) * (audio_beats * beat_duration_ms)
+#     end_time_ms += end_offset  # Calculate end time
+#
+#     return int(start_time_ms), int(end_time_ms)  # Return as a tuple of (start_time, end_time)
+
+
+# base bpm 变化的，必须使用本函数计算note和timing时间，通过分段累加来计算准确的时间
+def convert_time_beats_to_ms_dynamic(c_note, c_bpms: list, c_audio_betas, aff_audio_offset=0):
     audio_beats, audio_note_time = c_audio_betas[0], c_audio_betas[1]
     measure = c_note[1]  # The measure number usually in the second position
     offset = c_note[2]  # The offset usually in the third position
+    start_time_ms = 0
 
-    # Calculate the duration of each beat in milliseconds
-    beat_duration_ms = 60000 / bpm
+    for i in range(len(c_bpms)):
+        bpm_now_m = c_bpms[i][0]
+        # bpm_now_b = c_bpms[i][1]
+        bpm = c_bpms[i][2]
 
-    # Calculate the start time of the measure in milliseconds
-    measure_start_time_ms = (measure - 1) * (audio_beats * beat_duration_ms)
+        if i + 1 < len(c_bpms):
+            bpm_next_m = c_bpms[i + 1][0]
+            bpm_next_b = c_bpms[i + 1][1]
+            # bpm_next = c_bpms[i + 1][2]
+        else:
+            # max int
+            bpm_next_m = 999999
+            bpm_next_b = 0
 
-    # Calculate the time corresponding to the offset in milliseconds
-    offset_time_ms = (offset / Chuni_OffsetResolution) * (audio_beats * beat_duration_ms)
+        beat_duration_ms = 60000 / bpm
 
-    # Calculate the absolute time for the note
-    start_time_ms = measure_start_time_ms + offset_time_ms + aff_audio_offset
+        if bpm_now_m < measure <= bpm_next_m:
+            start_time_ms += ((measure - bpm_now_m) * (audio_beats * beat_duration_ms) +
+                              (offset / Chuni_OffsetResolution) * (audio_beats * beat_duration_ms))
+            # count end time
+            # 假定没有跨bpm改变区间的note
+            end_time_ms = start_time_ms
+            duration = 0
+            # For SFL timing line, duration specified at index 3
+            if c_note[0] == 'SFL' and isinstance(c_note[3], int):
+                duration = c_note[3]
+            # For ASC ASD and ALD, duration specified at index 7
+            elif c_note[0] in ['ASC', 'ASD', 'ALD'] and len(c_note) > 7 and isinstance(c_note[7], int):
+                duration = c_note[7]
+            elif c_note[0] in ['AHX'] and len(c_note) > 6 and isinstance(c_note[6], int):
+                duration = c_note[6]
+            # Other types notes, duration specified at index 5
+            elif len(c_note) > 5 and isinstance(c_note[5], int):
+                duration = c_note[5]  # Get the duration from c_note
 
-    # Initialize end time to start time by default
-    end_time_ms = start_time_ms
-
-    duration = 0
-    # For SFL timing line, duration specified at index 3
-    if c_note[0] == 'SFL' and isinstance(c_note[3], int):
-        duration = c_note[3]
-    # For ASC ASD and ALD, duration specified at index 7
-    elif c_note[0] in ['ASC', 'ASD', 'ALD'] and len(c_note) > 7 and isinstance(c_note[7], int):
-        duration = c_note[7]
-    elif c_note[0] in ['AHX'] and len(c_note) > 6 and isinstance(c_note[6], int):
-        duration = c_note[6]
-    # Other types notes, duration specified at index 5
-    elif len(c_note) > 5 and isinstance(c_note[5], int):
-        duration = c_note[5]  # Get the duration from c_note
-
-    # Calculate end offset time in milliseconds
-    end_offset = (duration / Chuni_OffsetResolution) * (audio_beats * beat_duration_ms)
-    end_time_ms += end_offset  # Calculate end time
-
-    return int(start_time_ms), int(end_time_ms)  # Return as a tuple of (start_time, end_time)er
+            # Calculate end offset time in milliseconds
+            end_offset = (duration / Chuni_OffsetResolution) * (audio_beats * beat_duration_ms)
+            end_time_ms += end_offset  # Calculate end time
+            return int(start_time_ms), int(end_time_ms), bpm
+        elif measure > bpm_next_m:
+            start_time_ms += ((bpm_next_m - bpm_now_m) * (audio_beats * beat_duration_ms) +
+                              (bpm_next_b / Chuni_OffsetResolution) * (audio_beats * beat_duration_ms))
+            continue
 
 
 def mapping_midpoint(midpoint, ground=True):
@@ -184,13 +236,14 @@ def restrict_y_axis(arc_y):
     return arc_y
 
 
-def convert_notes_by_group(group, bpm, c_audio_beats, a_audio_offset) -> list[aff.Note]:
+def convert_notes_by_group(group, bpm_sets, c_audio_beats, a_audio_offset) -> list[aff.Note]:
     # Group has four types: Single, Hold, Snake, Trace
     target_notes = []
 
     if group["type"] == "Single":
         head_note = group["list"][0]
-        start_time, end_time = convert_time_beats_to_ms(head_note, bpm, c_audio_beats, aff_audio_offset=a_audio_offset)
+        start_time, end_time, _ = convert_time_beats_to_ms_dynamic(head_note, bpm_sets, c_audio_beats,
+                                                                   aff_audio_offset=a_audio_offset)
         note_lane_left, note_lane_width = head_note[3], head_note[4]
 
         # TODO: Check FLK as other builds.
@@ -214,7 +267,8 @@ def convert_notes_by_group(group, bpm, c_audio_beats, a_audio_offset) -> list[af
 
     elif group["type"] == "Hold":
         head_note = group["list"][0]
-        start_time, end_time = convert_time_beats_to_ms(head_note, bpm, c_audio_beats, aff_audio_offset=a_audio_offset)
+        start_time, end_time, _ = convert_time_beats_to_ms_dynamic(head_note, bpm_sets, c_audio_beats,
+                                                                   aff_audio_offset=a_audio_offset)
 
         note_lane_left, note_lane_width = head_note[3], head_note[4]
 
@@ -243,7 +297,8 @@ def convert_notes_by_group(group, bpm, c_audio_beats, a_audio_offset) -> list[af
         arc_y_default = 0
         for note in group["list"]:
             note_type = note[0]
-            start_time, end_time = convert_time_beats_to_ms(note, bpm, c_audio_beats, aff_audio_offset=a_audio_offset)
+            start_time, end_time, _ = convert_time_beats_to_ms_dynamic(note, bpm_sets, c_audio_beats,
+                                                                       aff_audio_offset=a_audio_offset)
             if note_type in ['AIR', 'AUL', 'AUR']:
                 assert len(group["list"]) > 1, "AIR note should not be the first note in a snake group."
                 # Build if the group end with an AIR
@@ -301,7 +356,8 @@ def convert_notes_by_group(group, bpm, c_audio_beats, a_audio_offset) -> list[af
     elif group["type"] == "Trace":
         note = group["list"][0]
         note_type = note[0]
-        start_time, end_time = convert_time_beats_to_ms(note, bpm, c_audio_beats, aff_audio_offset=a_audio_offset)
+        start_time, end_time, curr_bpm = convert_time_beats_to_ms_dynamic(note, bpm_sets, c_audio_beats,
+                                                                   aff_audio_offset=a_audio_offset)
 
         x_start = mapping_midpoint(note[3] + note[4] / 2, ground=True)
         if note_type in ['AHD', 'AHX']:  # These kind of trace does not shift the x position.
@@ -328,7 +384,7 @@ def convert_notes_by_group(group, bpm, c_audio_beats, a_audio_offset) -> list[af
 
         # For AHD, ASD, AHX, a default AIR-ACTION is made at the end of the trace. Build a short-time RED ARC for it.
         # 对于 AHD ASD AHX，默认转译结尾一个长度为1/8拍的红蛇，作为air-action，TODO：提供选项改为天键
-        air_action_time = 60000 / bpm / 8
+        air_action_time = 60000 / curr_bpm / 8
 
         if note_type in ['AHD', 'ASD', 'AHX']:
             target_notes.append(
@@ -347,7 +403,7 @@ def convert_notes_by_group(group, bpm, c_audio_beats, a_audio_offset) -> list[af
                     for i in range(t, duration, t):
                         # 时间插值
                         audio_beats = 4  # TODO： parametric this.
-                        beat_duration_ms = 60000 / bpm
+                        beat_duration_ms = 60000 / curr_bpm
                         t_start = (start_time +
                                    (i / Chuni_OffsetResolution) * (audio_beats * beat_duration_ms))
                         # 位置插值  TODO：考虑红蛇的位移也进行插值
@@ -384,32 +440,33 @@ def convert_notes_by_group(group, bpm, c_audio_beats, a_audio_offset) -> list[af
 def convert_to_aff(configs, c_metadata, timing_list, notes_list) -> aff.AffList:
     aff_audio_offset = configs.get("AudioOffset", 0)
 
-    c_bpm = c_metadata["BPM_DEF"][0]  # default bpm
+    c_bpm = c_metadata["BPM_DEF"][0]  # default start base BPM
     c_audio_beats = c_metadata["MET_DEF"]
 
     # 1. Set BPM and Convert SFL timing_list to AffNote objects
     a_timing_notes = []
     sfl_end_time = 0
-    c_bpms = []
+    c_bpm_measures = []  # 正常情况下只有一个bpm行定义，但变速谱需要存储多个base bpm
     for c_timing in timing_list:
         if c_timing[0] == 'BPM':
             if c_timing[1] == 0:
                 a_timing_notes.append(aff.Timing(0, c_timing[3]))
-                c_bpms.append((0, c_timing[3]))
             else:
-                bpm_start_time, _ = convert_time_beats_to_ms(c_timing, c_bpm,
-                                                             c_audio_beats, aff_audio_offset=aff_audio_offset)
-                # TODO: 中二可能定义多个时间段的不同base bpm，需要分别计算
-                a_timing_notes.append(aff.Timing(0, c_bpm))
-                c_bpms.append((bpm_start_time, c_bpm))
+                bpm_start_time, _, _ = convert_time_beats_to_ms_dynamic(c_timing, c_bpm_measures,
+                                                                        c_audio_beats,
+                                                                        aff_audio_offset=aff_audio_offset)
+                a_timing_notes.append(aff.Timing(bpm_start_time, c_timing[3]))
+            c_bpm_measures.append((c_timing[1], c_timing[2], c_timing[3]))
+    for c_timing in timing_list:
         if c_timing[0] == 'SFL':
-            sfl_start_time, sfl_end_time = convert_time_beats_to_ms(c_timing, c_bpm,
-                                                                c_audio_beats, aff_audio_offset=aff_audio_offset)
-            a_bpm = c_bpm * float(c_timing[4])
+            sfl_start_time, sfl_end_time, curr_bpm = convert_time_beats_to_ms_dynamic(c_timing, c_bpm_measures,
+                                                                                      c_audio_beats,
+                                                                                      aff_audio_offset=aff_audio_offset)
+            a_bpm = curr_bpm * float(c_timing[4])
             a_timing_notes.append(aff.Timing(sfl_start_time, a_bpm))
 
     if sfl_end_time > 0:
-        # reset to the original BPM
+        # reset to the start base BPM
         a_timing_notes.append(aff.Timing(sfl_end_time, c_bpm))
 
     # 2. Convert notes_list to Aff note objects
@@ -417,7 +474,7 @@ def convert_to_aff(configs, c_metadata, timing_list, notes_list) -> aff.AffList:
     if len(a_timing_notes) <= 0:
         a_notes.append(aff.Timing(0, c_bpm))
 
-    # Pair the chuni notes to groups, in convenience to convert to arcaea notes.
+    # Zip the chuni notes to groups, in convenience to convert to arcaea notes.
     a_note_groups = []
 
     processed_indices = set()
@@ -512,7 +569,7 @@ def convert_to_aff(configs, c_metadata, timing_list, notes_list) -> aff.AffList:
 
     # Convert the note groups to arcaea notes
     for group in a_note_groups:
-        converted_notes = convert_notes_by_group(group, c_bpm, c_audio_beats, aff_audio_offset)
+        converted_notes = convert_notes_by_group(group, c_bpm_measures, c_audio_beats, aff_audio_offset)
         if len(converted_notes) > 0:
             a_notes.extend(converted_notes)
 
@@ -545,9 +602,6 @@ def get_c_music_info(xml_file, c2s_file):
         "DifficultyType": int(c2s_type),
         "DifficultyName": difficulty_table[int(c2s_type)],
     }
-
-
-
 
 
 def create_acc_project(aff_list, c_metadata, configs, music_info, style='ArcCreate'):
@@ -668,20 +722,20 @@ def exec_convert(configs):
     make_arcaea_project(aff_list, configs, c_metadata, style=configs["AffProjectStyle"])
 
 
-# 使用示例
-configs = {
-    "FilePath": r"",
-    "MusicInfoFilePath": r"",
-    "AudioOffset": 0,
-    "MusicName": "",
-    "ArtistName": "",
-    "DifficultyType": 2,
-    "DifficultyName": "Master",
-    "AffProjectDirPath": r"",
-    "AffProjectStyle": "ArcCreate",
-    "AffProjectName": "",
-    "ConvertConfigs": {
-        "check_note_overlapping": False,
-    }
-}
-exec_convert(configs)
+# # 使用示例
+# configs = {
+#     "FilePath": r"",
+#     "MusicInfoFilePath": r"",
+#     "AudioOffset": 0,
+#     "MusicName": "",
+#     "ArtistName": "",
+#     "DifficultyType": 2,
+#     "DifficultyName": "Master",
+#     "AffProjectDirPath": r"",
+#     "AffProjectStyle": "ArcCreate",
+#     "AffProjectName": "",
+#     "ConvertConfigs": {
+#         "check_note_overlapping": False,
+#     }
+# }
+# exec_convert(configs)
