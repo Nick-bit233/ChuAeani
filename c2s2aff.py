@@ -356,7 +356,7 @@ def convert_notes_by_group(group, bpm_sets, c_audio_beats, a_audio_offset) -> li
     elif group["type"] == "Trace":
         note = group["list"][0]
         note_type = note[0]
-        start_time, end_time, _ = convert_time_beats_to_ms_dynamic(note, bpm_sets, c_audio_beats,
+        start_time, end_time, curr_bpm = convert_time_beats_to_ms_dynamic(note, bpm_sets, c_audio_beats,
                                                                    aff_audio_offset=a_audio_offset)
 
         x_start = mapping_midpoint(note[3] + note[4] / 2, ground=True)
@@ -384,7 +384,7 @@ def convert_notes_by_group(group, bpm_sets, c_audio_beats, a_audio_offset) -> li
 
         # For AHD, ASD, AHX, a default AIR-ACTION is made at the end of the trace. Build a short-time RED ARC for it.
         # 对于 AHD ASD AHX，默认转译结尾一个长度为1/8拍的红蛇，作为air-action，TODO：提供选项改为天键
-        air_action_time = 60000 / bpm_sets / 8
+        air_action_time = 60000 / curr_bpm / 8
 
         if note_type in ['AHD', 'ASD', 'AHX']:
             target_notes.append(
@@ -403,7 +403,7 @@ def convert_notes_by_group(group, bpm_sets, c_audio_beats, a_audio_offset) -> li
                     for i in range(t, duration, t):
                         # 时间插值
                         audio_beats = 4  # TODO： parametric this.
-                        beat_duration_ms = 60000 / bpm_sets
+                        beat_duration_ms = 60000 / curr_bpm
                         t_start = (start_time +
                                    (i / Chuni_OffsetResolution) * (audio_beats * beat_duration_ms))
                         # 位置插值  TODO：考虑红蛇的位移也进行插值
@@ -722,20 +722,20 @@ def exec_convert(configs):
     make_arcaea_project(aff_list, configs, c_metadata, style=configs["AffProjectStyle"])
 
 
-# 使用示例
-configs = {
-    "FilePath": r"",
-    "MusicInfoFilePath": r"",
-    "AudioOffset": 0,
-    "MusicName": "",
-    "ArtistName": "",
-    "DifficultyType": 2,
-    "DifficultyName": "Master",
-    "AffProjectDirPath": r"",
-    "AffProjectStyle": "ArcCreate",
-    "AffProjectName": "",
-    "ConvertConfigs": {
-        "check_note_overlapping": False,
-    }
-}
-exec_convert(configs)
+# # 使用示例
+# configs = {
+#     "FilePath": r"",
+#     "MusicInfoFilePath": r"",
+#     "AudioOffset": 0,
+#     "MusicName": "",
+#     "ArtistName": "",
+#     "DifficultyType": 2,
+#     "DifficultyName": "Master",
+#     "AffProjectDirPath": r"",
+#     "AffProjectStyle": "ArcCreate",
+#     "AffProjectName": "",
+#     "ConvertConfigs": {
+#         "check_note_overlapping": False,
+#     }
+# }
+# exec_convert(configs)
