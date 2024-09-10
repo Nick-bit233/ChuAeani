@@ -28,6 +28,7 @@ def main():
             "audio_offset": "Audio Offset (ms)",
             "aff_project_style": "Aff Project Style ('Single' for only output .aff file)",
             "check_note_overlapping": "Check Note Overlapping",
+            "add_air_note_deco": "Add arrow shape Trace for translated AIR Notes",
             "other_settings": "Other Settings (Working on it ...)",
             "convert": "Convert",
             "no_file": "Please upload a .c2s file!",
@@ -52,7 +53,8 @@ def main():
             "audio_offset": "音频偏移（ms）",
             "aff_project_style": "Aff 项目格式（'Single' 则仅输出 .aff 文件）",
             "check_note_overlapping": "检查音符重叠",
-            "other_settings": "其他设置（暂未开放）",
+            "add_air_note_deco": "为转换的 AIR 音符添加箭头状黑线",
+            "other_settings": "其他设置（部分选项正在施工中……）",
             "convert": "转换",
             "no_file": "请至少上传一个 .c2s 文件！",
             "success": "转换完成！"
@@ -111,7 +113,9 @@ def main():
     aff_project_style = st.selectbox(labels["aff_project_style"], ["ArcCreate", "Arcade", "Single"])
 
     st.header(labels["other_settings"])
+    add_air_note_deco = st.checkbox(labels["add_air_note_deco"], True, disabled=False)
     check_note_overlapping = st.checkbox(labels["check_note_overlapping"], False, disabled=True)
+
 
     if st.button(labels["convert"]):
         if not file:
@@ -131,6 +135,7 @@ def main():
             "AffProjectStyle": aff_project_style,
             "ConvertConfigs": {
                 "check_note_overlapping": check_note_overlapping,
+                "add_air_note_deco": add_air_note_deco
             }
         }
 

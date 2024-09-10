@@ -238,7 +238,7 @@ def restrict_y_axis(arc_y):
     return arc_y
 
 
-def convert_notes_by_group(group, bpm_sets, c_audio_beats, a_audio_offset) -> list[aff.Note]:
+def convert_notes_by_group(group, bpm_sets, c_audio_beats, a_audio_offset, convert_style_configs) -> list[aff.Note]:
     # Group has four types: Single, Hold, Snake, Trace
     target_notes = []
 
@@ -255,7 +255,7 @@ def convert_notes_by_group(group, bpm_sets, c_audio_beats, a_audio_offset) -> li
                 aff.Arc(start_time, start_time + 3, a_note_x, a_note_x, 's',
                         1, 1, 0, True, [start_time]))
             # Add chuni air style trace decorations.
-            target_notes.extend(get_chuni_air_arrow(start_time, a_note_x))
+            make_chuni_air_style_traces(a_note_x, convert_style_configs, start_time, target_notes)
 
         else:
             # Mapping the note x position to Arcaea lane, for those who can't be mapped, build as ArcTap on the ground.
@@ -286,7 +286,7 @@ def convert_notes_by_group(group, bpm_sets, c_audio_beats, a_audio_offset) -> li
                 aff.Arc(end_time, end_time + 3, a_note_x, a_note_x, 's',
                         1, 1, 0, True, [end_time]))
             # Add chuni air style trace decorations.
-            target_notes.extend(get_chuni_air_arrow(end_time, a_note_x))
+            make_chuni_air_style_traces(a_note_x, convert_style_configs, end_time, target_notes)
 
     elif group["type"] == "Snake":
         # TODO: Combine continues slide notes to a single Arc.
@@ -310,7 +310,7 @@ def convert_notes_by_group(group, bpm_sets, c_audio_beats, a_audio_offset) -> li
                     aff.Arc(end_time, end_time + 3, a_note_x, a_note_x, 's',
                             1, 1, 0, True, [end_time]))
                 # Add chuni air style trace decorations.
-                target_notes.extend(get_chuni_air_arrow(end_time, a_note_x))
+                make_chuni_air_style_traces(a_note_x, convert_style_configs, end_time, target_notes)
                 continue
 
             x_start = mapping_midpoint(note[3] + note[4] / 2, ground=True)
@@ -435,12 +435,19 @@ def convert_notes_by_group(group, bpm_sets, c_audio_beats, a_audio_offset) -> li
             #             1, 1, 0, True, [start_time]))
 
             # Add chuni air style trace decorations.
-            target_notes.extend(get_chuni_air_arrow(start_time, x_start))
+            make_chuni_air_style_traces(x_start, convert_style_configs, start_time, target_notes)
     return target_notes
+
+
+def make_chuni_air_style_traces(a_note_x, convert_style_configs, start_time, target_notes):
+    if convert_style_configs["add_air_note_deco"]:
+        target_notes.extend(get_chuni_air_arrow(start_time, a_note_x))
 
 
 def convert_to_aff(configs, c_metadata, timing_list, notes_list) -> aff.AffList:
     aff_audio_offset = int(configs["AudioOffset"])
+    convert_style_configs = configs["ConvertConfigs"]
+
     c_bpm = c_metadata["BPM_DEF"][0]  # default start base BPM
     c_audio_beats = c_metadata["MET_DEF"]
 
@@ -570,7 +577,8 @@ def convert_to_aff(configs, c_metadata, timing_list, notes_list) -> aff.AffList:
 
     # Convert the note groups to arcaea notes
     for group in a_note_groups:
-        converted_notes = convert_notes_by_group(group, c_bpm_measures, c_audio_beats, aff_audio_offset)
+        converted_notes = convert_notes_by_group(group, c_bpm_measures,
+                                                 c_audio_beats, aff_audio_offset, convert_style_configs)
         if len(converted_notes) > 0:
             a_notes.extend(converted_notes)
 
