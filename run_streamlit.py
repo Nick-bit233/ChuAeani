@@ -5,7 +5,7 @@ from c2s2aff import exec_convert
 
 
 def main():
-    st.title("AirARChuni Version 0.1")
+    st.title("ChuAeani Version 0.1")
 
     # Language selection
     language = st.selectbox("Select Language / 选择语言", ["中文", "English"])
@@ -13,6 +13,7 @@ def main():
     if language == "English":
         labels = {
             "title": "- C2S to AFF Converter -",
+            "intro": "For more information, please visit the GitHub Repository:",
             "file_paths": "File and Directory Paths",
             "file": "Choose a .c2s file",
             "music_info_file": "Choose a Music.xml File",
@@ -30,7 +31,7 @@ def main():
             "aff_project_style": "Aff Project Style ('Single' for only output .aff file)",
             "check_note_overlapping": "Check Note Overlapping",
             "add_air_note_deco": "Add arrow shape Trace for translated :green[AIR] Notes",
-            "flick_as_tap": "Convert :blue[Flick] Notes to Tap/ArcTap Notes (default to short :blue[Blue Arcs])",
+            "flick_as_tap": "Convert :blue[Flick] Notes to Tap/ArcTap Notes (default to :blue[Blue] Short Arcs)",
             "slide_style_head": ":blue-background[Slide] Notes translation style",
             "slide_style_options": ["Ground", "Sky-input (FTR range)", "Sky-input (BYD range)"],
             "air_action_style_head": ":violet[AIR-Action] translation style",
@@ -47,6 +48,7 @@ def main():
     else:
         labels = {
             "title": "- C2S 转 AFF 转换器 -",
+            "intro": "源码仓库和使用说明详见：",
             "file_paths": "输入和输出路径",
             "file": "选择一个 .c2s 文件",
             "music_info_file": "选择一个对应的 Music.xml 文件",
@@ -78,6 +80,8 @@ def main():
         }
 
     st.title(labels["title"])
+
+    st.markdown(labels["intro"] + "[GitHub Repository](https://github.com/Nick-bit233/ChuAeani)")
 
     st.header(labels["file_paths"])
     file = st.file_uploader(labels["file"], type="c2s")
@@ -111,7 +115,8 @@ def main():
 
     st.header(labels["conversion_settings"])
     audio_offset = st.number_input(labels["audio_offset"], min_value=-100000, max_value=100000, value=0)
-    aff_project_style = st.selectbox(labels["aff_project_style"], ["ArcCreate", "Arcade", "Single"])
+    # TODO: add Arcade and Single support.
+    aff_project_style = st.selectbox(labels["aff_project_style"], ["ArcCreate"])
 
     st.header(labels["other_settings"])
     slide_style = st.radio(labels["slide_style_head"], labels["slide_style_options"], index=0, horizontal=True)
