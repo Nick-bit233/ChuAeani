@@ -14,7 +14,7 @@ def main():
         labels = {
             "title": "- C2S to AFF Converter -",
             "intro": "For more information, please visit the GitHub Repository:",
-            "file_paths": "File and Directory Paths",
+            "file_paths": "File and Resources",
             "file": "Choose a .c2s file",
             "music_info_file": "Choose a Music.xml File",
             "ogg_file": "Choose the corresponding .ogg file (optional)",
@@ -49,7 +49,7 @@ def main():
         labels = {
             "title": "- C2S 转 AFF 转换器 -",
             "intro": "源码仓库和使用说明详见：",
-            "file_paths": "输入和输出路径",
+            "file_paths": "输入待转换文件",
             "file": "选择一个 .c2s 文件",
             "music_info_file": "选择一个对应的 Music.xml 文件",
             "ogg_file": "选择音频 .ogg 文件（可选）",
