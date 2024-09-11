@@ -55,12 +55,14 @@ An beatmap converter from Chunithm to Arcaea fanmade.
 
 ## 已知问题
   - [ ] 对于部分特殊节拍谱面，小节线、timing和音符可能错位（例如：白庭）
-  - [ ] 部分谱面的AIR Hold不能被正确识别和翻译
+  - [ ] 部分谱面的AIR / AIR Hold不能被正确识别和翻译
+
 如果你有兴趣修复这些问题或贡献本仓库，欢迎issue或提供pull request。
 
 ## Known Issues
   - [ ] For some special beatmaps, beat lines, timing and notes may be misaligned (e.g. 白庭)
-  - [ ] AIR Hold notes of some beatmaps cannot be correctly recognized and translated
+  - [ ] AIR / AIR Hold notes of some beatmaps cannot be correctly recognized and translated
+
 If you are interested in fixing these issues or contributing to this repository, feel free to issue or provide a pull request.
 
 ## 感谢

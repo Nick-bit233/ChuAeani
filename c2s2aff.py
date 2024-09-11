@@ -131,7 +131,7 @@ def convert_time_beats_to_ms_dynamic(c_note, c_bpms: list, c_audio_betas, aff_au
             # For ASC ASD and ALD, duration specified at index 7
             elif c_note[0] in ['ASC', 'ASD', 'ALD'] and len(c_note) > 7 and isinstance(c_note[7], int):
                 duration = c_note[7]
-            elif c_note[0] in ['AHX'] and len(c_note) > 6 and isinstance(c_note[6], int):
+            elif c_note[0] in ['AHD', 'AHX'] and len(c_note) > 6 and isinstance(c_note[6], int):
                 duration = c_note[6]
             # Other types notes, duration specified at index 5
             elif len(c_note) > 5 and isinstance(c_note[5], int):
@@ -750,3 +750,30 @@ def exec_convert(configs):
     aff_list = convert_to_aff(configs, c_metadata, c_timing_list, c_notes_list)
     zip_path, proj_name = make_arcaea_project(aff_list, configs, c_metadata, style=configs["AffProjectStyle"])
     return zip_path, proj_name
+
+if __name__ == '__main__':
+    # Debug Test
+    file_path = r"D:\SEGA\SDHD - CHUNITHM LUMINOUS\HDD\SDHD_2.20.00_20231020095843_0\data\A000\music\music0749\0749_03.c2s"
+    test_configs = {
+        "MusicName": "Test Music",
+        "ArtistName": "Test Artist",
+        "DifficultyType": 2,
+        "DifficultyName": "Master",
+        "AudioOffset": -1500,
+        "ConvertConfigs": {
+            "flick_as_tap": False,
+            "slide_style": 0,
+            "air_action_style": 2,
+            "add_air_note_deco": True,
+        },
+        "AffProjectName": "Test Project",
+        "AffProjectStyle": "ArcCreate",
+        "OggFile": None,
+        "JpgFile": None,
+        "MusicInfoFile": None,
+        "File": open(file_path, "rb"),
+    }
+    c_metadata, c_timing_list, c_notes_list = read_c2s_file(file_path)
+    aff_list = convert_to_aff(test_configs, c_metadata, c_timing_list, c_notes_list)
+    output_file_path = r"D:\ARC_Fanmade\Charts\ArcCreateProjects\Fracture Ray"
+    write_aff_file(aff_list, os.path.join(output_file_path, "test.aff"))
