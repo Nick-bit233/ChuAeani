@@ -1,0 +1,2 @@
+arcfutil==0.12.0
+streamlit==1.38.0
