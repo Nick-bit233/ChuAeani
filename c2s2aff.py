@@ -1,3 +1,5 @@
+import utils
+import json
 import os
 import re
 import tempfile
@@ -398,7 +400,8 @@ def convert_notes_by_group(group, bpm_sets, c_audio_beats, a_audio_offset, conve
                         #             t_y, t_y, 1, False, []))
                 else:
                     # By default, add an air-action at the end of the trace.
-                    make_chuni_air_actions(air_action_style, air_action_duration, end_time, x_end, arc_y_end, target_notes)
+                    make_chuni_air_actions(air_action_style, air_action_duration, end_time, x_end, arc_y_end,
+                                           target_notes)
 
                     # In chunithm, if an ALD have different start and end y pos, parallel air-actions will be added.
                     # We impl this feature in form of black traces by default.
@@ -408,6 +411,7 @@ def convert_notes_by_group(group, bpm_sets, c_audio_beats, a_audio_offset, conve
                             while start < stop:
                                 yield start
                                 start += step
+
                         for y in frange(arc_y_start, arc_y_end, 0.2):
                             make_chuni_air_actions(1, air_action_duration, end_time, x_end, y, target_notes)
 
@@ -624,33 +628,12 @@ def make_arcaea_project(aff_list, configs, c_metadata, style='ArcCreate'):
             "DifficultyName": configs["DifficultyName"],
         }
 
-    # Make Project files
-    # p_path, proj_name = create_acc_project(aff_list, c_metadata, configs, music_info, style=style)
     def sanitize_filename(filename):
         # Windows disallowed characters: \ / : * ? " < > |
         return re.sub(r'[\\/:*?"<>|]', '_', filename)
 
-    def get_arcproj_charts_format(chart):
-        lines = [
-            f"audioPath: {chart['audioPath']}",
-            f"jacketPath: {chart['jacketPath']}",
-            f"baseBpm: {chart['baseBpm']}",
-            f"bpmText: {chart['bpmText']}",
-            f"syncBaseBpm: {chart['syncBaseBpm']}",
-            f"title: {chart['title']}",
-            f"composer: {chart['composer']}",
-            f"charter: {chart['charter']}",
-            f"alias: {chart['alias']}",
-            f"illustrator: {chart['illustrator']}",
-            f"difficulty: {chart['difficulty']}",
-            f"difficultyColor: {chart['difficultyColor']}",
-            f"lastWorkingTiming: {chart['lastWorkingTiming']}",
-            f"previewEnd: {chart['previewEnd']}\n"
-        ]
-        return f"chartPath: {chart['chartPath']}\n" + '\n'.join(f"  {line}" for line in lines)
-
     creator_string = c_metadata["CREATOR"][0]
-    c_bpm = c_metadata["BPM_DEF"][0]
+    c_bpm = float(c_metadata["BPM_DEF"][0])
 
     if configs["AffProjectName"] != "":
         arcproj_name = configs["AffProjectName"]
@@ -660,29 +643,15 @@ def make_arcaea_project(aff_list, configs, c_metadata, style='ArcCreate'):
     # Sanitize the arcproj_name
     arcproj_name = sanitize_filename(arcproj_name)
 
+    # 转谱声明文字
+    alias_string = ("Converted by AirARChuni version 0.1. "
+                    "Please be advised that this beatmap is not intended for using in any public forum.")
+
     # Create a temporary directory
     with tempfile.TemporaryDirectory() as arcproj_path:
-        aff_difficulty_type = music_info["DifficultyType"] if music_info["DifficultyType"] < 4 else 4
 
-        # Check if base.ogg exists, if not, create it.
-        if configs["OggFile"]:
-            ogg_content = configs["OggFile"].read()
-            with open(os.path.join(arcproj_path, "base.ogg"), "wb") as file:
-                file.write(ogg_content)
-        else:
-            # Create dummy files base.ogg
-            with open(os.path.join(arcproj_path, "base.ogg"), "w") as file:
-                pass
-
-        if configs["JpgFile"]:
-            jpg_content = configs["JpgFile"].read()
-            with open(os.path.join(arcproj_path, "base.jpg"), "wb") as file:
-                file.write(jpg_content)
-        else:
-            # Create dummy files base.jpg
-            with open(os.path.join(arcproj_path, "base.jpg"), "w") as file:
-                pass
-                # Create Aff file:
+        aff_difficulty_type = int(music_info["DifficultyType"]) if int(music_info["DifficultyType"]) < 4 else 4
+        # Create Aff file:
         write_aff_file(aff_list, os.path.join(arcproj_path, f"{aff_difficulty_type}.aff"))
 
         if style == 'ArcCreate':
@@ -697,8 +666,7 @@ def make_arcaea_project(aff_list, configs, c_metadata, style='ArcCreate'):
                 "title": music_info["MusicName"],
                 "composer": music_info["ArtistName"],
                 "charter": f"{creator_string}",
-                "alias": "Converted by AirARChuni version 0.1. Please be advised that this beatmap is not intended for "
-                         "using in any public forum.",
+                "alias": alias_string,
                 "illustrator": "\'\'",
                 "difficulty": music_info["DifficultyName"],
                 "difficultyColor": "\'#482B54FF\'",
@@ -715,12 +683,43 @@ def make_arcaea_project(aff_list, configs, c_metadata, style='ArcCreate'):
             # else:
             with open(os.path.join(arcproj_path, f"{arcproj_name}.arcproj"), "w", encoding="utf-8") as file:
                 file.write(f"lastOpenedChartPath: {arcproj_config['chartPath']}\n")
-                file.write(f"charts:\n- {get_arcproj_charts_format(arcproj_config)}")
+                file.write(f"charts:\n- {utils.get_arccreate_proj_config_charts_format(arcproj_config)}")
 
         elif style == 'Arcade':
+            # Create a Arcade project config (json format)
+            arcproj_json = utils.get_arcade_proj_config_format(
+                music_info, c_bpm, creator_string, alias_string, aff_difficulty_type)
+            # Make 'Arcade' Dir
+            arcade_path = os.path.join(arcproj_path, "Arcade")
+            os.makedirs(arcade_path, exist_ok=True)
+            # Create "Project.arcade" file
+            with open(os.path.join(arcade_path, "Project.arcade"), "w", encoding="utf-8") as file:
+                file.write(json.dumps(arcproj_json, indent=4))
+        elif style == 'Single':
             pass
         else:
             raise ValueError(f"Unsupported project style: {style}")
+
+        if not style == 'Single':
+            # Check if base.ogg exists, if not, create it.
+            if configs["OggFile"]:
+                ogg_content = configs["OggFile"].read()
+                with open(os.path.join(arcproj_path, "base.ogg"), "wb") as file:
+                    file.write(ogg_content)
+            else:
+                # Create dummy files base.ogg
+                with open(os.path.join(arcproj_path, "base.ogg"), "w") as file:
+                    pass
+
+            # Check if base.jpg exists, if not, create it.
+            if configs["JpgFile"]:
+                jpg_content = configs["JpgFile"].read()
+                with open(os.path.join(arcproj_path, "base.jpg"), "wb") as file:
+                    file.write(jpg_content)
+            else:
+                # Create dummy files base.jpg
+                with open(os.path.join(arcproj_path, "base.jpg"), "w") as file:
+                    pass
 
         # Create a zip file from the temporary directory
         zip_path = os.path.join(tempfile.gettempdir(), f"{arcproj_name}.zip")
