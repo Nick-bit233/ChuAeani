@@ -22,7 +22,7 @@ An beatmap converter from Chunithm to Arcaea fanmade.
 ## Feature
 - Convert Chunithm beatmap(.c2s) to Arcaea beatmap(.aff)
 - Support merge converted beatmap, export aff package
-  - Supported editor: ArcCreate
+  - Supported editor: [ArcCreate](https://github.com/Arcthesia/ArcCreate)
   - PS: You can also use it in Arcade, but it lacks beatmap information. Exporting to Arcade will be supported soon.
   - **Note: This project only functions as a tool, it does not provide or store any text and media resource files. The developer of this project is not responsible for any such files uploaded by the user.**
 - Support custom conversion settings, implemented:
@@ -39,8 +39,7 @@ An beatmap converter from Chunithm to Arcaea fanmade.
 
 ## 使用说明
 - 在线使用：
-  - 访问[ChuAeani](https://share.streamlit.io/...)
-  - (正在施工中……)
+  - 访问[ChuAeani](https://chuaeani.streamlit.app/)
 - 本地运行： 
   - 下载仓库到本地。
   - 安装依赖（建议使用python虚拟环境）：`pip install -r requirements.txt`。
@@ -48,8 +47,7 @@ An beatmap converter from Chunithm to Arcaea fanmade.
 
 ## Usage
 - Online:
-  - Visit [ChuAeani](https://share.streamlit.io/...)
-  - (Under construction...)
+  - Visit [ChuAeani](https://chuaeani.streamlit.app/)
 - Local:
   - Download the repository.
   - Install dependencies (It is recommended to use a python virtual environment): `pip install -r requirements.txt`.
