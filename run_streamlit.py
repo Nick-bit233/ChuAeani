@@ -3,8 +3,9 @@ import traceback
 import streamlit as st
 from c2s2aff import exec_convert
 
+
 def main():
-    st.title("AirARChuni Version 0.1")
+    st.title("ChuAeani Version 0.1")
 
     # Language selection
     language = st.selectbox("Select Language / 选择语言", ["中文", "English"])
@@ -12,6 +13,7 @@ def main():
     if language == "English":
         labels = {
             "title": "- C2S to AFF Converter -",
+            "intro": "For more information, please visit the GitHub Repository:",
             "file_paths": "File and Directory Paths",
             "file": "Choose a .c2s file",
             "music_info_file": "Choose a Music.xml File",
@@ -28,6 +30,16 @@ def main():
             "audio_offset": "Audio Offset (ms)",
             "aff_project_style": "Aff Project Style ('Single' for only output .aff file)",
             "check_note_overlapping": "Check Note Overlapping",
+            "add_air_note_deco": "Add arrow shape Trace for translated :green[AIR] Notes",
+            "flick_as_tap": "Convert :blue[Flick] Notes to Tap/ArcTap Notes (default to :blue[Blue] Short Arcs)",
+            "slide_style_head": ":blue-background[Slide] Notes translation style",
+            "slide_style_options": ["Ground", "Sky-input (FTR range)", "Sky-input (BYD range)"],
+            "air_action_style_head": ":violet[AIR-Action] translation style",
+            "air_action_style_options": ["None", "Traces", ":red[Red] Short Arcs"],
+            "air_action_warning": "Warning: Translate AIR-Action Notes to Red Short Arcs may cause "
+                                  "Arcs go beyond the limit!",
+            "style_conflict_warning": "Warning: Translate Slide Notes to Sky-input may cause "
+                                      "position conflict with other Notes!",
             "other_settings": "Other Settings (Working on it ...)",
             "convert": "Convert",
             "no_file": "Please upload a .c2s file!",
@@ -36,6 +48,7 @@ def main():
     else:
         labels = {
             "title": "- C2S 转 AFF 转换器 -",
+            "intro": "源码仓库和使用说明详见：",
             "file_paths": "输入和输出路径",
             "file": "选择一个 .c2s 文件",
             "music_info_file": "选择一个对应的 Music.xml 文件",
@@ -52,7 +65,15 @@ def main():
             "audio_offset": "音频偏移（ms）",
             "aff_project_style": "Aff 项目格式（'Single' 则仅输出 .aff 文件）",
             "check_note_overlapping": "检查音符重叠",
-            "other_settings": "其他设置（暂未开放）",
+            "add_air_note_deco": "为转换的 :green[AIR] 音符添加箭头状黑线",
+            "flick_as_tap": "将 :blue[Flick] 音符转换为 Tap/ArcTap 音符（默认为碎:blue[蓝蛇]）",
+            "slide_style_head": ":blue-background[Slide] 音符的垂直位置转换选项:",
+            "slide_style_options": ["地面", "Future范围天空", "Beyond范围天空"],
+            "air_action_style_head": ":violet[AIR-Action] 音符转换选项:",
+            "air_action_style_options": ["不转换", "转换为黑线", "转换为碎:red[红蛇]"],
+            "air_action_warning": "注意：选择将 AIR-Action 转换为红蛇可能导致超界！",
+            "style_conflict_warning": "注意：选择将 Slide 转换到天空线上可能导致与其他天空音符重叠！",
+            "other_settings": "其他设置（部分选项正在施工中……）",
             "convert": "转换",
             "no_file": "请至少上传一个 .c2s 文件！",
             "success": "转换完成！"
@@ -60,30 +81,16 @@ def main():
 
     st.title(labels["title"])
 
+    st.markdown(labels["intro"] + "[GitHub Repository](https://github.com/Nick-bit233/ChuAeani)")
+
     st.header(labels["file_paths"])
     file = st.file_uploader(labels["file"], type="c2s")
-    # if file is not None:
-    #     file_path = file.name
-    # else:
-    #     file_path = None
 
     music_info_file = st.file_uploader(labels["music_info_file"], type="xml")
-    # if music_info_file is not None:
-    #     music_info_file_path = music_info_file.name
-    # else:
-    #     music_info_file_path = None
 
     ogg_file = st.file_uploader(labels["ogg_file"], type="ogg")
-    # if ogg_file is not None:
-    #     ogg_file_path = ogg_file.name
-    # else:
-    #     ogg_file_path = None
 
     jpg_file = st.file_uploader(labels["jpg_file"], type="jpg")
-    # if jpg_file is not None:
-    #     jpg_file_path = jpg_file.name
-    # else:
-    #     jpg_file_path = None
 
     # aff_project_dir_path = st.text_input(labels["aff_project_dir"], "")
 
@@ -108,9 +115,19 @@ def main():
 
     st.header(labels["conversion_settings"])
     audio_offset = st.number_input(labels["audio_offset"], min_value=-100000, max_value=100000, value=0)
-    aff_project_style = st.selectbox(labels["aff_project_style"], ["ArcCreate", "Arcade", "Single"])
+    # TODO: add Arcade and Single support.
+    aff_project_style = st.selectbox(labels["aff_project_style"], ["ArcCreate"])
 
     st.header(labels["other_settings"])
+    slide_style = st.radio(labels["slide_style_head"], labels["slide_style_options"], index=0, horizontal=True)
+    if labels['slide_style_options'].index(slide_style) > 0:
+        st.warning(labels["style_conflict_warning"])
+    air_action_style = st.radio(labels["air_action_style_head"], labels["air_action_style_options"],
+                                index=2, horizontal=True)
+    if labels['air_action_style_options'].index(air_action_style) == 2:
+        st.warning(labels["air_action_warning"])
+    flick_as_tap = st.checkbox(labels["flick_as_tap"], False, disabled=False)
+    add_air_note_deco = st.checkbox(labels["add_air_note_deco"], True, disabled=False)
     check_note_overlapping = st.checkbox(labels["check_note_overlapping"], False, disabled=True)
 
     if st.button(labels["convert"]):
@@ -131,6 +148,10 @@ def main():
             "AffProjectStyle": aff_project_style,
             "ConvertConfigs": {
                 "check_note_overlapping": check_note_overlapping,
+                "add_air_note_deco": add_air_note_deco,
+                "flick_as_tap": flick_as_tap,
+                "slide_style": labels['slide_style_options'].index(slide_style),
+                "air_action_style": labels['air_action_style_options'].index(air_action_style)
             }
         }
 
