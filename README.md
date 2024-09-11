@@ -1,24 +1,24 @@
 # ChuAeani
 An beatmap converter from Chunithm to Arcaea fanmade.
 
-## 特性：
-- 支持将Chunithm谱面(.c2s)转换为Arcaea谱面(.aff)
+## 特性
+- 支持将Chunithm谱面`(.c2s)`转换为Arcaea谱面`(.aff)`
 - 支持合并转换后的谱面与音频、曲绘等资源文件，导出aff谱面包
   - 目前支持编辑器：ArcCreate
   - PS：直接导入Arcade也可以使用，只不过缺少songlist和谱面信息，导出Arcade功能后续即将支持。
 - 支持自定义转换设置，目前进度：
   - [x] 长条位置（地面/天空）
-  - [x] 添加AIR黑线上箭头
-  - [] 添加AIR黑线下箭头
-  - [x] AIR-Action样式（无/黑线/红色Arc）
-  - [x] Flick样式（Tap/ArcTap/蓝色Arc）
-  - [] 重叠note检测
-  - [] 重叠蛇检测
+  - [x] 添加 AIR 黑线上箭头
+  - [ ] 添加 AIR 黑线下箭头
+  - [x] AIR-Action 样式（无/黑线/红色Arc）
+  - [x] Flick 样式（Tap/ArcTap/蓝色Arc）
+  - [ ] 重叠note检测
+  - [ ] 重叠蛇检测
 - 其他功能开发计划
-  - [] 添加转换后谱面预览图生成
-  - [] UMIGURI 格式支持 （大坑）
+  - [ ] 添加转换后谱面预览图生成
+  - [ ] UMIGURI 格式支持 （大坑）
 
-## Feature:
+## Feature
 - Convert Chunithm beatmap(.c2s) to Arcaea beatmap(.aff)
 - Support merge converted beatmap with audio, jacket and other resources, export aff package
   - Supported editor: ArcCreate
@@ -26,14 +26,14 @@ An beatmap converter from Chunithm to Arcaea fanmade.
 - Support custom conversion settings, implemented:
   - [x] Long note position (Ground/Sky)
   - [x] Add AIR black line upper arrow
-  - [] Add AIR black line lower arrow
+  - [ ] Add AIR black line lower arrow
   - [x] AIR-Action style (None/Black line/Red Arc)
   - [x] Flick style (Tap/ArcTap/Blue Arc)
-  - [] Overlapping note detection
-  - [] Overlapping snake detection
+  - [ ] Overlapping note detection
+  - [ ] Overlapping snake detection
 - Future development plan
-  - [] Generate preview image of converted beatmap
-  - [] UMIGURI format support (not now)
+  - [ ] Generate preview image of converted beatmap
+  - [ ] UMIGURI format support (not now)
 
 ## 使用说明
 - 在线使用：
@@ -54,4 +54,4 @@ An beatmap converter from Chunithm to Arcaea fanmade.
   - Run `streamlit run .\run_streamlit.py`, and enjoy it in the popped up browser page.
 
 ## 感谢
-- Aff谱面处理模块来自：[arcfutil]https://github.com/feightwywx/arcfutil
+- Aff谱面处理模块来自：[arcfutil](https://github.com/feightwywx/arcfutil)
