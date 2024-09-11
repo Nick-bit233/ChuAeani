@@ -3,9 +3,10 @@ An beatmap converter from Chunithm to Arcaea fanmade.
 
 ## 特性
 - 支持将Chunithm谱面`(.c2s)`转换为Arcaea谱面`(.aff)`
-- 支持合并转换后的谱面与音频、曲绘等资源文件，导出aff谱面包
-  - 目前支持编辑器：ArcCreate
+- 支持合并转换后的谱面，导出制谱器工程包
+  - 目前支持编辑器：[ArcCreate](https://github.com/Arcthesia/ArcCreate)
   - PS：直接导入Arcade也可以使用，只不过缺少songlist和谱面信息，导出Arcade功能后续即将支持。
+  - **声明：本项目仅作为工具提供，不提供也不存储任何文本与媒体资源文件，使用者自行上传的任何此类文件与本项目开发者无关。**
 - 支持自定义转换设置，目前进度：
   - [x] 长条位置（地面/天空）
   - [x] 添加 AIR 黑线上箭头
@@ -20,9 +21,10 @@ An beatmap converter from Chunithm to Arcaea fanmade.
 
 ## Feature
 - Convert Chunithm beatmap(.c2s) to Arcaea beatmap(.aff)
-- Support merge converted beatmap with audio, jacket and other resources, export aff package
+- Support merge converted beatmap, export aff package
   - Supported editor: ArcCreate
   - PS: You can also use it in Arcade, but it lacks beatmap information. Exporting to Arcade will be supported soon.
+  - **Note: This project only functions as a tool, it does not provide or store any text and media resource files. The developer of this project is not responsible for any such files uploaded by the user.**
 - Support custom conversion settings, implemented:
   - [x] Long note position (Ground/Sky)
   - [x] Add AIR black line upper arrow
