@@ -115,7 +115,7 @@ def main():
 
     st.header(labels["conversion_settings"])
     audio_offset = st.number_input(labels["audio_offset"], min_value=-100000, max_value=100000, value=0)
-    aff_project_style = st.selectbox(labels["aff_project_style"], ["ArcCreate", "Arcade", "Single"])
+    aff_project_style = st.selectbox(labels["aff_project_style"], ["Arcade", "ArcCreate", "Single"])
 
     st.header(labels["other_settings"])
     slide_style = st.radio(labels["slide_style_head"], labels["slide_style_options"], index=0, horizontal=True)
