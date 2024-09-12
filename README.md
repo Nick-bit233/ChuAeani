@@ -26,8 +26,8 @@ An beatmap converter from Chunithm to Arcaea fanmade.
   - **声明：本项目仅作为工具提供，不提供也不存储任何文本与媒体资源文件，使用者自行上传的任何此类文件与本项目开发者无关。**
 - 支持自定义转换设置，目前进度：
   - [x] 长条位置（地面/天空）
-  - [x] 添加 AIR 黑线上箭头
-  - [ ] 添加 AIR 黑线下箭头
+  - [x] 添加 AIR 转换后的黑线上箭头样式
+  - [ ] 添加 更多 AIR 黑线样式：下箭头、向左/向右箭头等
   - [x] AIR-Action 样式（无/黑线/红色Arc）
   - [x] Flick 样式（Tap/ArcTap/蓝色Arc）
   - [ ] 重叠note检测
@@ -43,9 +43,9 @@ An beatmap converter from Chunithm to Arcaea fanmade.
   - **Note: This project only functions as a tool, it does not provide or store any text and media resource files. The developer of this project is not responsible for any such files uploaded by the user.**
 - Support custom conversion settings, implemented:
   - [x] Long note position (Ground/Sky)
-  - [x] Add AIR style upper arrow trace.
-  - [ ] Add AIR style lower arrow trace.
-  - [x] AIR-Action style (None/Black line/Red Arc)
+  - [x] Add AIR style: upper arrow trace.
+  - [ ] Add more AIR style: lower arrow trace, left / right arrow trace, etc.
+  - [x] AIR-Action style (None/Traces/Red Arc)
   - [x] Flick style (Tap/ArcTap/Blue Arc)
   - [ ] Overlapping note detection
   - [ ] Overlapping arcs detection
@@ -54,13 +54,13 @@ An beatmap converter from Chunithm to Arcaea fanmade.
   - [ ] UMIGURI format support (not now)
 
 ## 已知问题
-  - [ ] 对于部分特殊节拍谱面，小节线、timing和音符可能错位（例如：白庭）
+  - [ ] 对于部分特殊变速和节拍谱面，小节线、timing和音符可能错位（例如：白庭、竹）
   - [ ] 部分谱面的AIR / AIR Hold不能被正确识别和翻译
 
-如果你有兴趣修复这些问题或贡献本仓库，欢迎issue或提供pull request。
+如果你发现有更多谱面产生类似问题，或兴趣修复代码来贡献本仓库，欢迎issue或提供pull request。
 
 ## Known Issues
-  - [ ] For some special beatmaps, beat lines, timing and notes may be misaligned (e.g. 白庭)
+  - [ ] For some special beatmaps, beat lines, timing and notes may be misaligned (e.g. 白庭、竹)
   - [ ] AIR / AIR Hold notes of some beatmaps cannot be correctly recognized and translated
 
 If you are interested in fixing these issues or contributing to this repository, feel free to issue or provide a pull request.
