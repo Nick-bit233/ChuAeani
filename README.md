@@ -2,6 +2,12 @@
 An beatmap converter from Chunithm to Arcaea fanmade.
 一个简易的Chunithm转Arcaea谱面转换器
 
+![image](https://github.com/user-attachments/assets/7a35259e-5190-4082-afe0-fd30435a3878)
+![image](https://github.com/user-attachments/assets/255cdd2e-9ab5-4ca1-9161-5908cfb15178)
+![image](https://github.com/user-attachments/assets/77670f26-0821-4aa9-abfd-7e5a570fddd1)
+![image](https://github.com/user-attachments/assets/0d85c62e-4a8b-4d61-838b-6aba131f80ef)
+
+
 ## 使用说明
 - 在线使用：
   - 访问 [ChuAeani](https://chuaeani.streamlit.app/)
@@ -17,6 +23,15 @@ An beatmap converter from Chunithm to Arcaea fanmade.
   - Download the repository.
   - Install dependencies (It is recommended to use a python virtual environment): `pip install -r requirements.txt`.
   - Run `streamlit run .\run_streamlit.py`, and enjoy it in the popped up browser page.
+ 
+## 常见问题
+Q：转换后的谱面没有音频/曲绘？
+
+A：如果在转换页面没有上传音频或曲绘，得到的谱面包中为空文件，请自行替换为可用资源。
+
+Q：转换后的谱面与音频对不上？
+
+A：可能使用的音频开始时间存在错位。请在编辑器中自行校对第一个音（或第一个小节）的开始时间，与实际谱面第一个音符的开始时间，将二者差值（ms）填入AudioOffset选项，重新转换即可。
 
 ## 特性
 - 支持将Chunithm谱面`(.c2s)`转换为Arcaea谱面`(.aff)`
