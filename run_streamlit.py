@@ -32,6 +32,7 @@ def main():
             "check_note_overlapping": "Check Note Overlapping",
             "add_air_note_deco": "Add arrow shape Trace for translated :green[AIR] Notes",
             "experiment_tap": "Convert Long Tap/ExTap to Experimental ArcTap",
+            "byd_arctap": "Allow AIR to be converted to Beyond range ArcTap",
 
             "slide_style_head": ":blue-background[Slide] Notes translation style",
             "slide_style_options": [":violet[Dual-color Arcs] (Red-Blue Arcs overlap, to ignore hand order)",
@@ -88,6 +89,7 @@ def main():
             "check_note_overlapping": "检查音符重叠",
             "add_air_note_deco": "为转换的 :green[AIR] 音符添加箭头状黑线",
             "experiment_tap": "变长Tap/ExTap转换为实验性ArcTap",
+            "byd_arctap": "允许将Air转换到Beyond范围的天键",
 
             "slide_style_head": ":blue-background[Slide] 音符样式转换选项:",
             "slide_style_options": [":violet[双色音弧]（红蓝蛇叠加，以忽视手序）", "单色音弧：:blue[蓝]",
@@ -170,6 +172,7 @@ def main():
     if labels['air_action_style_options'].index(air_action_style) == 2:
         st.warning(labels["air_action_warning"])
     experiment_tap = st.checkbox(labels["experiment_tap"], False, disabled=True)
+    byd_arctap = st.checkbox(labels["byd_arctap"], False, disabled=True)
     add_air_note_deco = st.checkbox(labels["add_air_note_deco"], True, disabled=False)
     check_note_overlapping = st.checkbox(labels["check_note_overlapping"], False, disabled=True)
 
