@@ -5,6 +5,8 @@ from c2s2aff import exec_convert
 
 
 def main():
+    logo_path = "logo.png"
+    st.image(logo_path, width=96)  # 设置图像的宽度
     st.title("ChuAeani Beta Version 0.4")
 
     # Language selection
