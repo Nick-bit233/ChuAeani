@@ -1,4 +1,4 @@
-# ChuAeani
+# <img src="https://github.com/user-attachments/assets/8ef6b3a1-8d14-4ea5-8c5a-568404db35fc" width="64"> ChuAeani
 An beatmap converter from Chunithm to Arcaea fanmade.
 
 一个简易的Chunithm转Arcaea谱面转换器
