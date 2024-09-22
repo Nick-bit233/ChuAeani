@@ -5,7 +5,9 @@ from c2s2aff import exec_convert
 
 
 def main():
-    st.title("ChuAeani Version 0.1")
+    logo_path = "logo.png"
+    st.image(logo_path, width=96)  # 设置图像的宽度
+    st.title("ChuAeani Beta Version 0.4")
 
     # Language selection
     language = st.selectbox("Select Language / 选择语言", ["中文", "English"])
@@ -31,12 +33,34 @@ def main():
             "aff_project_style": "Aff Project Style ('Single' for only output .aff file)",
             "check_note_overlapping": "Check Note Overlapping",
             "add_air_note_deco": "Add arrow shape Trace for translated :green[AIR] Notes",
-            "flick_as_tap": "Convert :blue[Flick] Notes to Tap/ArcTap Notes (default to :blue[Blue] Short Arcs)",
+            "experiment_tap": "Convert Long Tap/ExTap to Experimental ArcTap",
+            "byd_arctap": "Allow AIR to be converted to Beyond range ArcTap",
+
             "slide_style_head": ":blue-background[Slide] Notes translation style",
-            "slide_style_options": ["Ground", "Sky-input (FTR range)", "Sky-input (BYD range)"],
+            "slide_style_options": [":violet[Dual-color Arcs] (Red-Blue Arcs overlap, to ignore hand order)",
+                                    "Single-color Arcs: :blue[Blue]", "Single-color Arcs: :red[Red]",
+                                    "Single-color Arcs: :green[Green]"],
+
+            "slide_position_head": ":blue-background[Slide] Notes translation style",
+            "slide_position_options": ["Ground", "Sky-input (FTR range)", "Sky-input (BYD range)"],
+
+            "flick_style_head": ":blue[Flick] Notes translation style",
+            "flick_style_options": ["As Tap Notes", "Short Dual-color Arcs", "Short Blue Arcs",
+                                    "Short Red Arcs", "Short Green Arcs"],
+
+            "air_style_head": ":green[AIR] Notes translation style",
+            "air_style_options": ["As Sky ArcTaps", "Up Dual-color Arcs", "Up Blue Arcs",
+                                  "Up Red Arcs", "Up Green Arcs"],
+
+            "air_hold_style_head": ":green-background[AIR-Hold] translation style",
+            "air_hold_style_options": ["None", "Traces", "Dual-color Arcs", "Blue Arcs",
+                                       "Red Arcs", "Green Arcs"],
+
             "air_action_style_head": ":violet[AIR-Action] translation style",
-            "air_action_style_options": ["None", "Traces", ":red[Red] Short Arcs"],
-            "air_action_warning": "Warning: Translate AIR-Action Notes to Red Short Arcs may cause "
+            "air_action_style_options": ["None", "Traces", "Dual-color Arcs", "Blue Arcs",
+                                         "Red Arcs", "Green Arcs"],
+
+            "air_action_warning": "Warning: Translate AIR-Action Notes to Arcs may cause "
                                   "Arcs go beyond the limit!",
             "style_conflict_warning": "Warning: Translate Slide Notes to Sky-input may cause "
                                       "position conflict with other Notes!",
@@ -66,12 +90,31 @@ def main():
             "aff_project_style": "Aff 项目格式（'Single' 则仅输出 .aff 文件）",
             "check_note_overlapping": "检查音符重叠",
             "add_air_note_deco": "为转换的 :green[AIR] 音符添加箭头状黑线",
-            "flick_as_tap": "将 :blue[Flick] 音符转换为 Tap/ArcTap 音符（默认为碎:blue[蓝蛇]）",
-            "slide_style_head": ":blue-background[Slide] 音符的垂直位置转换选项:",
-            "slide_style_options": ["地面", "Future范围天空", "Beyond范围天空"],
+            "experiment_tap": "变长Tap/ExTap转换为实验性ArcTap",
+            "byd_arctap": "允许将Air转换到Beyond范围的天键",
+
+            "slide_style_head": ":blue-background[Slide] 音符样式转换选项:",
+            "slide_style_options": [":violet[双色音弧]（红蓝蛇叠加，以忽视手序）", "单色音弧：:blue[蓝]",
+                                    "单色音弧：:red[红]", "单色音弧：:green[绿]"],
+            "slide_position_head": ":blue-background[Slide] 音符的垂直位置转换选项:",
+            "slide_position_options": ["地面", "Future范围天空", "Beyond范围天空"],
+
+            "flick_style_head": ":blue[Flick] 音符样式转换选项:",
+            "flick_style_options": ["视为Tap音符", "碎:violet[双色音弧]", "碎单色音弧：:blue[蓝]",
+                                    "碎单色音弧：:red[红]", "碎单色音弧：:green[绿]"],
+
+            "air_style_head": ":green[AIR] 音符样式转换选项:",
+            "air_style_options": ["转换为天键", "向上:violet[双色音弧]", "向上单色音弧：:blue[蓝]",
+                                  "向上单色音弧：:red[红]", "向上单色音弧：:green[绿]"],
+
+            "air_hold_style_head": ":green-background[AIR-Hold] 音符转换选项:",
+            "air_hold_style_options": ["不转换", "转换为黑线", "天空:violet[双色音弧]", "天空单色音弧：:blue[蓝]",
+                                       "天空单色音弧：:red[红]", "天空单色音弧：:green[绿]"],
+
             "air_action_style_head": ":violet[AIR-Action] 音符转换选项:",
-            "air_action_style_options": ["不转换", "转换为黑线", "转换为碎:red[红蛇]"],
-            "air_action_warning": "注意：选择将 AIR-Action 转换为红蛇可能导致超界！",
+            "air_action_style_options": ["不转换", "转换为黑线", ":violet[双色音弧]", "单色音弧：:blue[蓝]",
+                                         "单色音弧：:red[红]", "单色音弧：:green[绿]"],
+            "air_action_warning": "注意：选择将 AIR-Action 转换为音弧可能导致超界！",
             "style_conflict_warning": "注意：选择将 Slide 转换到天空线上可能导致与其他天空音符重叠！",
             "other_settings": "其他设置（部分选项正在施工中……）",
             "convert": "转换",
@@ -119,13 +162,19 @@ def main():
 
     st.header(labels["other_settings"])
     slide_style = st.radio(labels["slide_style_head"], labels["slide_style_options"], index=0, horizontal=True)
-    if labels['slide_style_options'].index(slide_style) > 0:
+    slide_pos_y = st.radio(labels["slide_position_head"], labels["slide_position_options"], index=0, horizontal=True)
+    if labels['slide_position_options'].index(slide_pos_y) > 0:
         st.warning(labels["style_conflict_warning"])
+
+    flick_style = st.radio(labels["flick_style_head"], labels["flick_style_options"], index=1, horizontal=True)
+    air_style = st.radio(labels["air_style_head"], labels["air_style_options"], index=0, horizontal=True)
+    air_hold_style = st.radio(labels["air_hold_style_head"], labels["air_hold_style_options"], index=1, horizontal=True)
     air_action_style = st.radio(labels["air_action_style_head"], labels["air_action_style_options"],
                                 index=2, horizontal=True)
     if labels['air_action_style_options'].index(air_action_style) == 2:
         st.warning(labels["air_action_warning"])
-    flick_as_tap = st.checkbox(labels["flick_as_tap"], False, disabled=False)
+    experiment_tap = st.checkbox(labels["experiment_tap"], False, disabled=True)
+    byd_arctap = st.checkbox(labels["byd_arctap"], False, disabled=True)
     add_air_note_deco = st.checkbox(labels["add_air_note_deco"], True, disabled=False)
     check_note_overlapping = st.checkbox(labels["check_note_overlapping"], False, disabled=True)
 
@@ -148,8 +197,12 @@ def main():
             "ConvertConfigs": {
                 "check_note_overlapping": check_note_overlapping,
                 "add_air_note_deco": add_air_note_deco,
-                "flick_as_tap": flick_as_tap,
+                "experiment_tap": experiment_tap,
                 "slide_style": labels['slide_style_options'].index(slide_style),
+                "slide_pos_y": labels['slide_position_options'].index(slide_pos_y),
+                "flick_style": labels['flick_style_options'].index(flick_style),
+                "air_style": labels['air_style_options'].index(air_style),
+                "air_hold_style": labels['air_hold_style_options'].index(air_hold_style),
                 "air_action_style": labels['air_action_style_options'].index(air_action_style)
             }
         }
