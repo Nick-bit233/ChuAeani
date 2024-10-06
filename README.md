@@ -60,7 +60,7 @@ A: If no audio or cover is uploaded on the conversion page, the generated beatma
 
 Q: The converted beatmap does not match the audio?
 
-A: The audio start time may be misaligned. Please manually check the start time of the first note (or the first bar) in the editor, and the actual start time of the first note in the beatmap, fill in the difference (ms) into the `AudioOffset` option, and reconvert.
+A: The audio start time may be misaligned. Please manually check the start time of the first note (or the first measure) in the editor, and the actual start time of the first note in the beatmap, fill the difference (ms) into the `AudioOffset` option, and reconvert.
 
 ## 特性
 - 支持将Chunithm谱面`(.c2s)`转换为Arcaea谱面`(.aff)`
@@ -75,8 +75,8 @@ A: The audio start time may be misaligned. Please manually check the start time 
   - [x] 为转换后的 AIR 添加黑线上箭头装饰
   - [ ] 增加更多可选的 AIR 黑线装饰样式：下箭头、向左/向右箭头等
   - [x] 更多 AIR 转换选项（如上滑蛇替代天键）
-  - [x] 可选 AIR-Action 转换样式（无/黑线/红色Arc）
-  - [x] 可选 Flick 转换样式（Tap/ArcTap/蓝色Arc）
+  - [x] 可选 AIR-Action 转换样式（无/黑线/蛇）
+  - [x] 可选 Flick 转换样式（Tap/ArcTap/碎蛇）
   - [ ] 可将长度大于2的类Tap键型转换为`HIVEMIND INTERLINKED`中出现的变长天键
   - [ ] 重叠note检测和自动筛除
   - [ ] 重叠Hold/Slide蛇检测和自动筛除
@@ -91,16 +91,16 @@ A: The audio start time may be misaligned. Please manually check the start time 
   - **Note: This project only functions as a tool, it does not provide or store any text and media resource files. The developer of this project is not responsible for any such files uploaded by the user.**
 - Support custom conversion settings, implemented:
   - [x] Slide vertical position option (Ground/Sky)
-  - [x] Convert Slide to purple snake (red and blue overlap to replace hand sequence recognition)
-  - [x] Convert AIR-Hold to purple snake
-  - [x] Add black line and arrow decoration to converted AIR
-  - [ ] Add more optional AIR black line decoration styles: down arrow, left/right arrow, etc.
-  - [x] More AIR conversion options (e.g. up slide snake instead of sky key)
-  - [x] Optional AIR-Action conversion style (none/black line/red Arc)
-  - [x] Optional Flick conversion style (Tap/ArcTap/blue Arc)
-  - [ ] Convert Tap-key type longer than 2 to the variable-length sky key in `HIVEMIND INTERLINKED`
+  - [x] Convert Slide to purple Arc (red and blue overlap to let Arceae ignore hand recognition)
+  - [x] Convert AIR-Hold to purple Arc
+  - [x] Add black traces and arrow decorations to converted AIR
+  - [ ] Add more optional AIR black trace decoration styles: down arrow, left/right arrow, etc.
+  - [x] More AIR conversion options (e.g. up slide Arc instead of ArcTap)
+  - [x] Optional AIR-Action conversion style (none/Traces/different Arcs)
+  - [x] Optional Flick conversion style (Tap/ArcTap/different Arcs)
+  - [ ] Convert Tap-like note whose width longer than 2 to the variable-length ArcTap showing in `HIVEMIND INTERLINKED`
   - [ ] Overlapping note detection and automatic filtering
-  - [ ] Overlapping Hold/Slide snake detection and automatic filtering
+  - [ ] Overlapping Hold/Arc detection and automatic filtering
 - Future work
   - [ ] Generate preview image of converted beatmap
   - [ ] UMIGURI format support (maybe)
